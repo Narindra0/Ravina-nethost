@@ -40,8 +40,6 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --verbose
 # Copy application files
 COPY . .
 
-# Run composer scripts (cache clear, assets install, etc.)
-RUN composer run-script post-install-cmd
 
 # Configure Apache DocumentRoot to public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public

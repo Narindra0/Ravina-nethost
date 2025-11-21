@@ -18,5 +18,10 @@ fi
 # If DATABASE_URL is set and contains tidbcloud, ensure SSL options are present?
 # For now, we rely on the user providing the correct URL or Doctrine handling it.
 
+# Run post-install steps (cache clear, assets install)
+echo "Clearing cache and installing assets..."
+php bin/console cache:clear
+php bin/console assets:install public
+
 # Run the command
 exec "$@"
