@@ -23,5 +23,11 @@ echo "Clearing cache and installing assets..."
 php bin/console cache:clear
 php bin/console assets:install public
 
+echo "Running migrations..."
+php bin/console doctrine:migrations:migrate --no-interaction --all-or-nothing
+
+echo "Fixing permissions..."
+chown -R www-data:www-data var
+
 # Run the command
 exec "$@"
