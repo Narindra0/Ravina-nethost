@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ravina-backend
+    env: docker
+    rootDir: backend
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: APP_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromGroup: ravina-settings
+      - key: JWT_SECRET_KEY
+        fromGroup: ravina-settings
+      - key: JWT_PUBLIC_KEY
+        fromGroup: ravina-settings
+      - key: JWT_PASSPHRASE
+        fromGroup: ravina-settings
+      - key: CLOUDINARY_URL
+        fromGroup: ravina-settings
+
+
+envVarGroups:
+  - name: ravina-settings
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_PUBLIC_KEY
+        sync: false
+      - key: JWT_PASSPHRASE
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
