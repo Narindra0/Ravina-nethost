@@ -7,11 +7,14 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libzip-dev \
     libonig-dev \
+    libxml2-dev \
     && docker-php-ext-install \
     intl \
     pdo_mysql \
     zip \
-    opcache
+    opcache \
+    mbstring \
+    xml
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
