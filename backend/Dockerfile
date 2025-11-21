@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
     zip \
     opcache \
     mbstring \
-    xml
+    xml \
+    ctype \
+    iconv
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -28,8 +30,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy composer files
 COPY composer.json composer.lock ./
 
+# Set Composer memory limit
+ENV COMPOSER_MEMORY_LIMIT=-1
+
 # Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-scripts --verbose
 
 # Copy application files
 COPY . .
