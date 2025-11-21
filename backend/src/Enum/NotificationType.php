@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Enum;
+
+enum NotificationType: string
+{
+    case PLUIE = 'PLUIE';
+    case J_1_PLANTATION = 'J_1_PLANTATION';
+    case JOUR_J_PLANTATION = 'JOUR_J_PLANTATION';
+    case ARROSAGE_RAPPEL = 'ARROSAGE_RAPPEL';
+    case ARROSAGE_OUBLIE = 'ARROSAGE_OUBLIE';
+    case PLANTATION_RETARD = 'PLANTATION_RETARD';
+}
+
+

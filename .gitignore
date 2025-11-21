@@ -1,0 +1,15 @@
+# Security tokens and sensitive files
+token
+*.token
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
