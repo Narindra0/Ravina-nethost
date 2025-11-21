@@ -32,6 +32,7 @@ COPY composer.json composer.lock ./
 
 # Set Composer memory limit
 ENV COMPOSER_MEMORY_LIMIT=-1
+ENV APP_ENV=prod
 
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader --no-scripts --verbose
