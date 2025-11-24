@@ -125,7 +125,11 @@ export default function PlantTemplateDetailsModal({ open, template, onClose }) {
             >
               <Box
                 component="img"
-                src={template.imageSlug ? `/images/plantes/${template.imageSlug}` : DEFAULT_PLANT_IMAGE}
+                src={
+                  template.imageSlug
+                    ? (template.imageSlug.startsWith('http') ? template.imageSlug : `/images/plantes/${template.imageSlug}`)
+                    : DEFAULT_PLANT_IMAGE
+                }
                 alt={template.name}
                 onError={(e) => {
                   e.currentTarget.onerror = null
