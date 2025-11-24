@@ -40,6 +40,13 @@ const getPlantImagePath = (imageSlug) => {
 
 const DEFAULT_PLANT_IMAGE = '/images/plantes/default.jpg'
 
+// Helper function to extract base plant name (remove parentheses content)
+const getDisplayName = (fullName) => {
+  if (!fullName) return ''
+  // Extract text before opening parenthesis and trim whitespace
+  const baseName = fullName.split('(')[0].trim()
+  return baseName || fullName
+}
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -237,7 +244,7 @@ export default function Dashboard() {
                               onClick={() => handleOpenTemplateDetails(plant)}
                               aria-label={`Voir les détails de ${plant.name}`}
                             >
-                              {plant.name}
+                              {getDisplayName(plant.name)}
                             </Button>
                             <Box sx={dashboardStyles.plantCardBadge}>
                               {plant.type}
@@ -318,7 +325,7 @@ export default function Dashboard() {
                               onClick={() => handleOpenTemplateDetails(plant)}
                               aria-label={`Voir les détails de ${plant.name}`}
                             >
-                              {plant.name}
+                              {getDisplayName(plant.name)}
                             </Button>
                             <Box sx={dashboardStyles.plantCardBadge}>
                               {plant.type}

@@ -1,6 +1,7 @@
 // src/pages/Login.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { authStore } from '../store/auth';
 import { Box, Button, Typography, Avatar, CircularProgress, Fade, Dialog, DialogContent, DialogActions, useMediaQuery, useTheme } from '@mui/material';
 import { Cloud, Campaign } from '@mui/icons-material';
 
@@ -19,15 +20,15 @@ export default function LoginPage() {
     const [isHovered, setIsHovered] = useState(false);
     const [forgotPasswordDialogOpen, setForgotPasswordDialogOpen] = useState(false);
 
-    const { 
+    const {
         email, password, setPassword, loading, emailError,
         handleEmailChange, handleEmailBlur, handleSubmit,
         showPassword, setShowPassword, showSnackbar,
-        ...snackbarProps 
+        ...snackbarProps
     } = useLoginForm();
 
-    const handleForgotPassword = (e) => { 
-        e.preventDefault(); 
+    const handleForgotPassword = (e) => {
+        e.preventDefault();
         setForgotPasswordDialogOpen(true);
     };
 
@@ -35,9 +36,9 @@ export default function LoginPage() {
         setForgotPasswordDialogOpen(false);
     };
 
-    const handleRegister = (e) => { 
-        e.preventDefault(); 
-        navigate({ to: '/register' }); 
+    const handleRegister = (e) => {
+        e.preventDefault();
+        navigate({ to: '/register' });
     };
 
     const visual = (
@@ -48,6 +49,12 @@ export default function LoginPage() {
     );
 
     useEffect(() => {
+        // Redirect to dashboard if user is already authenticated
+        if (authStore.isAuthenticated()) {
+            navigate({ to: '/dashboard', replace: true });
+            return;
+        }
+
         const params = new URLSearchParams(window.location.search);
         if (params.get('registered') === '1') {
             showSnackbar('✅ Compte créé avec succès. Vous pouvez vous connecter.', 'success');
@@ -60,7 +67,7 @@ export default function LoginPage() {
             <Box sx={authStyles.header}>
                 <Box component="img" src={logoImageSrc} alt="OrientMada Logo" sx={authStyles.logoImage} />
                 <Fade in timeout={800}>
-                    <Avatar 
+                    <Avatar
                         sx={authStyles.avatar(isSmallScreen, isHovered)}
                         onMouseEnter={() => setIsHovered(true)}
                         onMouseLeave={() => setIsHovered(false)}
@@ -88,35 +95,35 @@ export default function LoginPage() {
                     }
                 }}
             >
-                <EmailField 
-                    value={email} 
-                    onChange={handleEmailChange} 
-                    onBlur={handleEmailBlur} 
-                    emailError={emailError} 
+                <EmailField
+                    value={email}
+                    onChange={handleEmailChange}
+                    onBlur={handleEmailBlur}
+                    emailError={emailError}
                     isSmallScreen={isSmallScreen}
                 />
 
-                <PasswordField 
+                <PasswordField
                     label="Mot de passe"
-                    value={password} 
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    showPassword={showPassword} 
+                    showPassword={showPassword}
                     setShowPassword={setShowPassword}
                     isSmallScreen={isSmallScreen}
                     sx={{ mb: 1 }}
                 />
-                
+
                 <Box sx={{ textAlign: 'right', mb: 3 }}>
-                    <Typography component="button" onClick={handleForgotPassword} sx={{...authStyles.linkButton, ml: 0}}>
+                    <Typography component="button" onClick={handleForgotPassword} sx={{ ...authStyles.linkButton, ml: 0 }}>
                         Mot de passe oublié ?
                     </Typography>
                 </Box>
 
                 <Button
-                    type="submit" 
-                    fullWidth 
-                    variant="contained" 
-                    sx={authStyles.submitButton(isSmallScreen)} 
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    sx={authStyles.submitButton(isSmallScreen)}
                     disabled={loading}
                 >
                     {loading ? <CircularProgress size={22} color="inherit" /> : 'Se connecter'}
@@ -124,12 +131,12 @@ export default function LoginPage() {
             </Box>
 
             <Typography variant="body2" sx={authStyles.subtitle}>
-                Nouveau sur OrientMada ? 
+                Nouveau sur OrientMada ?
                 <Typography component="button" onClick={handleRegister} sx={authStyles.linkButton}>
                     Créer un compte
                 </Typography>
             </Typography>
-            
+
             <Typography variant="caption" sx={authStyles.copyright}>
                 © 2024 OrientMada. Tous droits réservés.
             </Typography>

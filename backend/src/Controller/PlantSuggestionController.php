@@ -30,14 +30,15 @@ class PlantSuggestionController extends AbstractController
         if (!$cacheItem->isHit()) {
             $sub = $plantTemplateRepository->createQueryBuilder('pt2')
                 ->select('MAX(pt2.id)')
-                ->andWhere('pt2.bestSeason = :season')
+                ->andWhere('pt2.bestSeason = :season OR LOWER(pt2.bestSeason) LIKE :yearRound')
                 ->groupBy('pt2.name');
 
             $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
-            $qb->andWhere('pt.bestSeason = :season')
+            $qb->andWhere('pt.bestSeason = :season OR LOWER(pt.bestSeason) LIKE :yearRound')
                ->andWhere($expr->in('pt.id', $sub->getDQL()))
                ->setParameter('season', $season)
+               ->setParameter('yearRound', '%toute%')
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
             $plantTemplates = $qb->getQuery()->getResult();
