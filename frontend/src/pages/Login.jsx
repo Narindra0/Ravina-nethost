@@ -1,4 +1,3 @@
-```javascript
 // src/pages/Login.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -30,6 +29,8 @@ export default function LoginPage() {
         ...snackbarProps
     } = useLoginForm();
 
+    console.log('Login Page Render:', { errorModalOpen, errorModalTitle, errorModalMessage });
+
     const handleForgotPassword = (e) => {
         e.preventDefault();
         setForgotPasswordDialogOpen(true);
@@ -60,11 +61,6 @@ export default function LoginPage() {
 
         const params = new URLSearchParams(window.location.search);
         if (params.get('registered') === '1') {
-            // This snackbar might be redundant if we use the success modal in Register, 
-            // but if the user navigates manually or refreshes, it's good to keep.
-            // However, the Register page now handles the success modal before redirecting.
-            // We can keep it for now as a fallback or remove it if we want purely modal based.
-            // Given the requirement, I'll keep it as it doesn't hurt.
             showSnackbar('✅ Compte créé avec succès. Vous pouvez vous connecter.', 'success');
             navigate({ to: '/login', replace: true });
         }
@@ -169,4 +165,3 @@ export default function LoginPage() {
         </AuthLayout>
     );
 }
-```

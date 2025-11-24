@@ -41,6 +41,8 @@ export function AuthModal({
     const color = getColor();
     const icon = getIcon();
 
+    console.log('AuthModal Render:', { open, type, title, message });
+
     const handleButtonClick = () => {
         if (onButtonClick) {
             onButtonClick();
