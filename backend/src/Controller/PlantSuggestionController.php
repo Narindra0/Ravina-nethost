@@ -25,22 +25,19 @@ class PlantSuggestionController extends AbstractController
             default => 'Printemps'
         };
         // Cache + déduplication par nom pour la saison
-        $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $season;
+        $cacheKey = 'plant_suggestions_global_' . $season;
         $cacheItem = $cache->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
             $sub = $plantTemplateRepository->createQueryBuilder('pt2')
                 ->select('MAX(pt2.id)')
                 ->andWhere('pt2.bestSeason = :season')
-                ->andWhere('pt2.user = :owner')
                 ->groupBy('pt2.name');
 
             $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
             $qb->andWhere('pt.bestSeason = :season')
-               ->andWhere('pt.user = :owner')
                ->andWhere($expr->in('pt.id', $sub->getDQL()))
                ->setParameter('season', $season)
-               ->setParameter('owner', $ownerId)
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
             $plantTemplates = $qb->getQuery()->getResult();
