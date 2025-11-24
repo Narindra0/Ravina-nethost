@@ -1,4 +1,3 @@
-```javascript
 // src/pages/Register.jsx
 import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -20,20 +19,20 @@ export default function RegisterPage() {
     const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
     const [isHovered, setIsHovered] = useState(false);
 
-    const { 
-        email, password, confirmPassword, loading, emailError, 
+    const {
+        email, password, confirmPassword, loading, emailError,
         handleEmailChange, handleSubmit,
         showPassword, setShowPassword,
         showConfirmPassword, setShowConfirmPassword,
         setPassword, setConfirmPassword,
         errorModalOpen, errorModalMessage, errorModalTitle, closeErrorModal,
         successModalOpen, handleSuccessModalClose,
-        ...snackbarProps 
+        ...snackbarProps
     } = useRegisterForm();
 
-    const handleLogin = (e) => { 
-        e.preventDefault(); 
-        navigate({ to: '/login' }); 
+    const handleLogin = (e) => {
+        e.preventDefault();
+        navigate({ to: '/login' });
     };
 
     const visual = (
@@ -48,7 +47,7 @@ export default function RegisterPage() {
             <Box sx={authStyles.header}>
                 <Box component="img" src={logoImageSrc} alt="OrientMada Logo" sx={authStyles.logoImage} />
                 <Fade in timeout={800}>
-                    <Avatar 
+                    <Avatar
                         sx={authStyles.avatar(isSmallScreen, isHovered)}
                         onMouseEnter={() => setIsHovered(true)}
                         onMouseLeave={() => setIsHovered(false)}
@@ -68,37 +67,37 @@ export default function RegisterPage() {
             </Box>
 
             <Box component="form" onSubmit={handleSubmit}>
-                <EmailField 
-                    value={email} 
-                    onChange={handleEmailChange} 
-                    emailError={emailError} 
+                <EmailField
+                    value={email}
+                    onChange={handleEmailChange}
+                    emailError={emailError}
                     isSmallScreen={isSmallScreen}
                 />
 
-                <PasswordField 
+                <PasswordField
                     label="Mot de passe"
-                    value={password} 
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    showPassword={showPassword} 
+                    showPassword={showPassword}
                     setShowPassword={setShowPassword}
                     isSmallScreen={isSmallScreen}
                 />
-                
-                <PasswordField 
+
+                <PasswordField
                     label="Confirmer le mot de passe"
-                    value={confirmPassword} 
+                    value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    showPassword={showConfirmPassword} 
+                    showPassword={showConfirmPassword}
                     setShowPassword={setShowConfirmPassword}
                     isSmallScreen={isSmallScreen}
                     sx={{ mb: 3 }}
                 />
 
                 <Button
-                    type="submit" 
-                    fullWidth 
-                    variant="contained" 
-                    sx={authStyles.submitButton(isSmallScreen)} 
+                    type="submit"
+                    fullWidth
+                    variant="contained"
+                    sx={authStyles.submitButton(isSmallScreen)}
                     disabled={loading}
                 >
                     {loading ? <CircularProgress size={22} color="inherit" /> : 'Créer mon compte'}
@@ -106,12 +105,12 @@ export default function RegisterPage() {
             </Box>
 
             <Typography variant="body2" sx={authStyles.subtitle}>
-                Déjà un compte ? 
+                Déjà un compte ?
                 <Typography component="button" onClick={handleLogin} sx={authStyles.linkButton}>
                     Se connecter
                 </Typography>
             </Typography>
-            
+
             <Typography variant="caption" sx={authStyles.copyright}>
                 © 2024 OrientMada. Tous droits réservés.
             </Typography>
@@ -137,4 +136,3 @@ export default function RegisterPage() {
         </AuthLayout>
     );
 }
-```
