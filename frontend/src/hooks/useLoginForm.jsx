@@ -1,4 +1,6 @@
+```javascript
 // src/hooks/useLoginForm.js (CORRIGÉ)
+import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuthForm } from './useAuthForm';
 import { useSnackbar } from './useSnackbar';
@@ -17,6 +19,13 @@ export function useLoginForm() {
     } = useAuthForm();
     const { showSnackbar, ...snackbarProps } = useSnackbar();
     
+    // Modal state
+    const [errorModalOpen, setErrorModalOpen] = useState(false);
+    const [errorModalMessage, setErrorModalMessage] = useState('');
+    const [errorModalTitle, setErrorModalTitle] = useState('');
+
+    const closeErrorModal = () => setErrorModalOpen(false);
+
     // --- Logique de validation spécifique au Login ---
     const validate = () => {
         // ... (validation inchangée)
@@ -56,13 +65,20 @@ export function useLoginForm() {
 
         } catch (err) {
             console.error(err);
+            let title = 'Erreur de connexion';
+            let message = 'Une erreur est survenue. Veuillez réessayer.';
+
             if (err.response?.status === 401) {
-                showSnackbar('🔐 Identifiants incorrects.');
+                title = 'Identifiants incorrects';
+                message = 'L\'adresse email ou le mot de passe que vous avez saisi est incorrect.';
             } else if (err.response?.status === 404) {
-                showSnackbar('👤 Aucun compte trouvé avec cet email.');
-            } else {
-                showSnackbar('❌ Une erreur est survenue. Veuillez réessayer.');
+                title = 'Compte introuvable';
+                message = 'Aucun compte n\'est associé à cette adresse email.';
             }
+
+            setErrorModalTitle(title);
+            setErrorModalMessage(message);
+            setErrorModalOpen(true);
         } finally {
             setLoading(false);
         }
@@ -74,5 +90,11 @@ export function useLoginForm() {
         loading, 
         emailError, handleEmailChange, handleEmailBlur, handleSubmit,
         showPassword, setShowPassword, ...snackbarProps, showSnackbar,
+        // Modal props
+        errorModalOpen,
+        errorModalMessage,
+        errorModalTitle,
+        closeErrorModal
     };
 }
+```

@@ -1,3 +1,4 @@
+```javascript
 // src/pages/Register.jsx
 import React, { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -9,6 +10,7 @@ import { AuthLayout } from '../components/auth/AuthLayout';
 import { VisualSection } from '../components/auth/VisualSection';
 import { EmailField } from '../components/ui/EmailField';
 import { PasswordField } from '../components/ui/PasswordField';
+import { AuthModal } from '../components/ui/AuthModal';
 import { authStyles, PRIMARY_GREEN, ACCENT_ORANGE } from '../styles/authStyles';
 import logoImageSrc from '../assets/logo-texte.png';
 
@@ -24,6 +26,8 @@ export default function RegisterPage() {
         showPassword, setShowPassword,
         showConfirmPassword, setShowConfirmPassword,
         setPassword, setConfirmPassword,
+        errorModalOpen, errorModalMessage, errorModalTitle, closeErrorModal,
+        successModalOpen, handleSuccessModalClose,
         ...snackbarProps 
     } = useRegisterForm();
 
@@ -111,6 +115,26 @@ export default function RegisterPage() {
             <Typography variant="caption" sx={authStyles.copyright}>
                 © 2024 OrientMada. Tous droits réservés.
             </Typography>
+
+            <AuthModal
+                open={errorModalOpen}
+                onClose={closeErrorModal}
+                type="error"
+                title={errorModalTitle}
+                message={errorModalMessage}
+                buttonText="Réessayer"
+            />
+
+            <AuthModal
+                open={successModalOpen}
+                onClose={handleSuccessModalClose}
+                type="success"
+                title="Compte créé !"
+                message="Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter."
+                buttonText="Se connecter"
+                onButtonClick={handleSuccessModalClose}
+            />
         </AuthLayout>
     );
 }
+```
