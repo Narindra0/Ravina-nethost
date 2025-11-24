@@ -35,7 +35,7 @@ class CronController extends AbstractController
     private function runCommand(Request $request, string $commandName): JsonResponse
     {
         // Simple security check
-        $cronSecret = $this->getParameter('env(CRON_SECRET)');
+        $cronSecret = $_ENV['CRON_SECRET'] ?? null;
         $authHeader = $request->headers->get('X-Cron-Auth');
 
         if ($cronSecret && $authHeader !== $cronSecret) {
@@ -60,10 +60,15 @@ class CronController extends AbstractController
                 'command' => $commandName,
                 'output' => $content,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Log the error explicitly for Render logs
+            error_log('CRON ERROR: ' . $e->getMessage());
+            error_log($e->getTraceAsString());
+            
             return new JsonResponse([
                 'status' => 'error',
                 'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString() // Optional: be careful exposing trace in prod, but useful for debug now
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
