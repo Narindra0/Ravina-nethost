@@ -34,7 +34,7 @@ import WarningIcon from '@mui/icons-material/Warning'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CelebrationIcon from '@mui/icons-material/Celebration'
-import EcoIcon from '@mui/icons-material/Eco'
+import SpaIcon from '@mui/icons-material/Spa'
 import Sidebar from './Sidebar'
 import { notificationsStyles } from '../styles/Notifications.styles'
 import { api } from '../lib/axios'
@@ -50,7 +50,7 @@ const typeConfig = {
   ARROSAGE_OUBLIE: { label: 'Alerte arrosage', color: '#EF4444', icon: <WarningIcon /> },
   PLANTATION_RETARD: { label: 'Retard', color: '#F43F5E', icon: <WarningIcon /> },
   RECOLTE_PROCHE: { label: 'Récolte', color: '#F59E0B', icon: <CelebrationIcon /> },
-  FERTILISATION_RECOMMANDEE: { label: 'Fertilisation', color: '#10B981', icon: <EcoIcon /> },
+  FERTILISATION_RECOMMANDEE: { label: 'Fertilisation', color: '#10B981', icon: <SpaIcon /> },
   DEFAULT: { label: 'Notification', color: '#64748B', icon: <NotificationsActiveIcon /> },
 }
 
