@@ -30,11 +30,10 @@ const cardStyle = {
   width: '100%',
   borderRadius: 4,
   padding: 3,
-  background: 'linear-gradient(135deg, #0f172a, #0f766e)',
-  color: 'white',
-  boxShadow: '0 20px 60px rgba(15,23,42,0.45)',
-  border: '1px solid rgba(248,250,252,0.25)',
-  backdropFilter: 'blur(12px)',
+  background: '#ffffff',
+  color: '#333333',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  border: '1px solid rgba(0,0,0,0.1)',
 }
 
 export function NotificationToast({ notification, open, onClose }) {
@@ -58,13 +57,13 @@ export function NotificationToast({ notification, open, onClose }) {
                   width: 48,
                   height: 48,
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(248,250,252,0.15)',
+                  backgroundColor: 'rgba(0,0,0,0.05)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <NotificationsActiveIcon />
+                <NotificationsActiveIcon color="action" />
               </Box>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
@@ -76,20 +75,12 @@ export function NotificationToast({ notification, open, onClose }) {
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
                   {notification.message}
                 </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.6, display: 'block', mt: 1 }}>
-                  {new Date(notification.createdAt).toLocaleString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: 'short',
-                  })}
-                </Typography>
               </Box>
               <IconButton
                 size="small"
                 onClick={onClose}
                 sx={{
-                  color: 'white',
+                  color: '#333333',
                   opacity: 0.6,
                   '&:hover': { opacity: 1 },
                 }}
@@ -103,6 +94,3 @@ export function NotificationToast({ notification, open, onClose }) {
     </Modal>
   )
 }
-
-
-

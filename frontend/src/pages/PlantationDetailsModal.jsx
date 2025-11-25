@@ -114,6 +114,43 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const statusColor = getStatusColor(plantation.etatActuel)
   const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
 
+  const hasWateredToday = React.useMemo(() => {
+    if (!snapshot) return false
+
+    const decisionDetails = snapshot.decisionDetailsJson ?? {}
+    const isManual = decisionDetails.manual === true
+
+    if (!isManual) return false
+
+    const snapshotDate = new Date(snapshot.dateSnapshot)
+    const today = new Date()
+
+    const isSameDay =
+      snapshotDate.getFullYear() === today.getFullYear() &&
+      snapshotDate.getMonth() === today.getMonth() &&
+      snapshotDate.getDate() === today.getDate()
+
+    return isSameDay
+  }, [snapshot])
+
+  const isWateringTooFar = d !== null && d > 2
+
+  const getDisabledMessage = () => {
+    if (hasWateredToday) {
+      return "Vous avez déjà arrosé cette plante aujourd'hui."
+    }
+    if (isAutoValidationToday) {
+      return "Arrosage validé automatiquement aujourd'hui."
+    }
+    if (isWateringTooFar) {
+      return `Arrosage prévu dans ${d} jour${d > 1 ? 's' : ''}. Trop tôt pour arroser maintenant.`
+    }
+    return null
+  }
+
+  const disabledMessage = getDisabledMessage()
+  const shouldDisableButton = !!disabledMessage
+
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
   const lastSnapshots = (plantation.suiviSnapshots || []).slice(0, 3)
@@ -311,9 +348,17 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         >
           Supprimer
         </Button>
-        {isAutoValidationToday ? (
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-            Arrosage validé automatiquement aujourd&apos;hui.
+        {shouldDisableButton ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              fontWeight: 600,
+              maxWidth: '60%',
+              textAlign: 'right'
+            }}
+          >
+            {disabledMessage}
           </Typography>
         ) : (
           <Button

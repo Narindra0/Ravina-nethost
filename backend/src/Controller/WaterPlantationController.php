@@ -43,7 +43,7 @@ class WaterPlantationController extends AbstractController
             (float) $plantation->getGeolocalisationLon()
         );
         $lifecycle = $this->lifecycleService->compute($plantation);
-        $watering = $this->wateringService->compute($plantation, $meteo, $lastSnapshot instanceof SuiviSnapshot ? $lastSnapshot : null);
+        $watering = $this->wateringService->compute($plantation, $meteo, $lastSnapshot instanceof SuiviSnapshot ? $lastSnapshot : null, true);
 
         $snapshot = new SuiviSnapshot();
         $snapshot->setUserPlantation($plantation);

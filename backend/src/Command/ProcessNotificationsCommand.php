@@ -90,12 +90,55 @@ class ProcessNotificationsCommand extends Command
         $plantName = $plantation->getPlantTemplate()?->getName() ?? 'votre plante';
         $plantNames = [$plantName];
 
-        $this->handleRainCancellation($plantation, $forecast, $nextWateringDate, $plantNames, $today, $io);
+        $autoValidation = $wateringData['auto_validation'] ?? null;
+
+        $this->handleRainCancellation($plantation, $forecast, $nextWateringDate, $autoValidation, $plantNames, $today, $io);
+        $this->handleWeatherAlerts($plantation, $wateringData, $plantNames, $today, $io);
         $this->handlePlantationReminders($plantation, $plantName, $today, $io);
         $this->handleHarvestReminder($plantation, $plantName, $today, $io);
         $this->handleFertilizationRecommendation($plantation, $plantNames, $today, $io);
         $this->handleWateringReminder($plantation, $nextWateringDate, $forecast, $plantNames, $today, $now, $io);
         $this->handleWateringOverdue($plantation, $nextWateringDate, $plantNames, $now, $io);
+    }
+
+    private function handleWeatherAlerts(
+        UserPlantation $plantation,
+        array $wateringData,
+        array $plantNames,
+        DateTimeImmutable $today,
+        SymfonyStyle $io,
+    ): void {
+        $cards = $wateringData['cards'] ?? [];
+        $alertCard = null;
+
+        foreach ($cards as $card) {
+            if (($card['type'] ?? '') === 'danger_alert') {
+                $alertCard = $card;
+                break;
+            }
+        }
+
+        if (!$alertCard) {
+            return;
+        }
+
+        // Éviter de spammer l'alerte (une fois par jour max)
+        if ($this->notificationServiceAlreadySent($plantation, NotificationType::ALERTE_METEO, $today)) {
+            return;
+        }
+
+        $this->notificationService->createNotification(
+            $plantation->getUser(),
+            NotificationType::ALERTE_METEO,
+            [
+                'plant_names' => $plantNames,
+                'message' => $alertCard['message'] ?? 'Alerte météo importante.',
+                'severity' => $alertCard['severity'] ?? 'warning',
+            ],
+            $plantation
+        );
+
+        $io->text(sprintf('🌩️ Notification Alerte Météo créée pour la plantation #%d.', $plantation->getId()));
     }
 
     /**
@@ -118,10 +161,35 @@ class ProcessNotificationsCommand extends Command
         UserPlantation $plantation,
         array $forecast,
         ?\DateTimeInterface $nextWateringDate,
+        ?array $autoValidation,
         array $plantNames,
         DateTimeImmutable $today,
         SymfonyStyle $io,
     ): void {
+        // 1. Vérifier si une auto-validation "pluie" a eu lieu (nouveau système)
+        if ($autoValidation !== null && ($autoValidation['reason'] ?? '') === 'rain') {
+            if ($this->notificationServiceAlreadySent($plantation, NotificationType::PLUIE, $today)) {
+                return;
+            }
+
+            $precipitation = $autoValidation['precipitation_sum'] ?? 0;
+            
+            $this->notificationService->createNotification(
+                $plantation->getUser(),
+                NotificationType::PLUIE,
+                [
+                    'plant_names' => $plantNames,
+                    'precipitation_sum' => $precipitation,
+                    'message' => 'Pluie détectée. Arrosage validé automatiquement.',
+                ],
+                $plantation
+            );
+
+            $io->text(sprintf('🌧️ Notification pluie (auto-arrosage) créée pour la plantation #%d.', $plantation->getId()));
+            return;
+        }
+
+        // 2. Ancien système (Annulation simple si pluie prévue le jour même)
         $daily = $forecast['daily'][0] ?? null;
         $precipitation = is_array($daily) ? ($daily['precipitation_sum'] ?? 0) : 0;
 

@@ -11,15 +11,19 @@ class WateringService
      * @param array<string, mixed> $meteoData
      * @return array<string, mixed>
      */
-    public function compute(UserPlantation $plantation, array $meteoData, ?SuiviSnapshot $lastSnapshot = null): array
+    public function compute(UserPlantation $plantation, array $meteoData, ?SuiviSnapshot $lastSnapshot = null, bool $isManualWatering = false): array
     {
         $template = $plantation->getPlantTemplate();
         $baseQuantity = (float) ($template?->getWateringQuantityMl() ?? 500);
         $frequencyDays = $this->resolveFrequencyDays((string) $template?->getWateringFrequency());
 
-        $referenceDate = $lastSnapshot?->getArrosageRecoDate()
-            ?? $plantation->getDatePlantation()
-            ?? new \DateTimeImmutable('today');
+        if ($isManualWatering) {
+            $referenceDate = new \DateTimeImmutable('today');
+        } else {
+            $referenceDate = $lastSnapshot?->getArrosageRecoDate()
+                ?? $plantation->getDatePlantation()
+                ?? new \DateTimeImmutable('today');
+        }
 
         $referenceDate = $this->toImmutable($referenceDate);
         $frequencyInterval = new \DateInterval(sprintf('P%dD', max(1, $frequencyDays)));
@@ -42,7 +46,36 @@ class WateringService
         $daysUntilNext = $this->diffInDays($todayDate, $nextDate);
         if ($isOutdoor && $daysUntilNext <= 2 && $daysUntilNext >= 0) {
             $forecastDay = $daily[$daysUntilNext] ?? null;
-            if (is_array($forecastDay) && isset($forecastDay['precipitation_sum']) && $forecastDay['precipitation_sum'] !== null && $forecastDay['precipitation_sum'] >= 5) {
+            
+            // 1. Vérifier la pluie AUJOURD'HUI (Auto-Arrosage)
+            if (is_array($today) && isset($today['precipitation_sum']) && $today['precipitation_sum'] >= 5) {
+                $message = sprintf(
+                    'Pluie détectée aujourd\'hui (%.1f mm). L\'arrosage est validé automatiquement et le cycle est réinitialisé.',
+                    $today['precipitation_sum']
+                );
+
+                $autoValidation = [
+                    'validated_at' => $todayDate->format(\DateTimeInterface::ATOM),
+                    'validated_for' => $todayDate->format('Y-m-d'), // Validé pour aujourd'hui
+                    'reason' => 'rain',
+                    'precipitation_sum' => (float) $today['precipitation_sum'],
+                    'message' => $message,
+                ];
+
+                $decisions[] = $message;
+                $cards[] = [
+                    'type' => 'watering_auto',
+                    'severity' => 'success', // Succès car ça remplace l'action utilisateur
+                    'message' => $message,
+                ];
+
+                // Réinitialiser le cycle à partir d'aujourd'hui
+                $referenceDate = $todayDate;
+                $nextDate = $referenceDate->add($frequencyInterval);
+                $daysUntilNext = $this->diffInDays($todayDate, $nextDate);
+            }
+            // 2. Sinon, vérifier la pluie le jour prévu (Annulation simple)
+            elseif (is_array($forecastDay) && isset($forecastDay['precipitation_sum']) && $forecastDay['precipitation_sum'] !== null && $forecastDay['precipitation_sum'] >= 5) {
                 $message = $daysUntilNext === 0
                     ? 'Pluie prévue aujourd\'hui, l\'arrosage est validé automatiquement. Pas besoin d\'arroser.'
                     : sprintf(
@@ -54,7 +87,7 @@ class WateringService
                 $autoValidation = [
                     'validated_at' => $todayDate->format(\DateTimeInterface::ATOM),
                     'validated_for' => $nextDate->format('Y-m-d'),
-                    'reason' => 'rain',
+                    'reason' => 'rain_forecast', // Distinction avec 'rain' (réel)
                     'precipitation_sum' => (float) $forecastDay['precipitation_sum'],
                     'message' => $message,
                 ];
@@ -81,6 +114,60 @@ class WateringService
         if ($autoValidation === null && $isOutdoor && is_array($tomorrow) && isset($tomorrow['precipitation_sum']) && $tomorrow['precipitation_sum'] >= 7) {
             $nextDate = $nextDate->add(new \DateInterval('P1D'));
             $decisions[] = 'Report supplémentaire (+1 jour) car forte pluie attendue demain.';
+        }
+
+        // Calcul de la pluie cumulée (Aujourd'hui + Demain)
+        $rainToday = (float) ($today['precipitation_sum'] ?? 0);
+        $rainTomorrow = (float) ($tomorrow['precipitation_sum'] ?? 0);
+        $cumulativeRain = $rainToday + $rainTomorrow;
+
+        // SEUIL DANGER PLUIE (30mm en 2 jours)
+        if ($isOutdoor && $cumulativeRain >= 30) {
+            $plantName = mb_strtolower($template?->getName() ?? '');
+            $plantType = mb_strtolower($template?->getType() ?? '');
+            $stage = mb_strtolower($lastSnapshot?->getStadeActuel() ?? '');
+
+            $alertMessage = '';
+            $advice = '';
+
+            // 1. Logique Spécifique par NOM
+            if (str_contains($plantName, 'tomate') || str_contains($plantName, 'pomme de terre')) {
+                $alertMessage = sprintf('Alerte Mildiou (Pluie %.1fmm).', $cumulativeRain);
+                $advice = 'Risque élevé de Mildiou. Surveillez les taches brunes sur les feuilles et évitez absolument de mouiller le feuillage.';
+            } elseif (str_contains($plantName, 'fraise') || str_contains($plantName, 'laitue') || str_contains($plantName, 'salade')) {
+                $alertMessage = sprintf('Risque Pourriture (Pluie %.1fmm).', $cumulativeRain);
+                $advice = 'Sol détrempé : risque de pourriture et limaces. Paillez et surélevez les fruits si possible.';
+            } elseif (str_contains($plantName, 'cactus') || str_contains($plantName, 'succulente') || str_contains($plantName, 'plante grasse')) {
+                $alertMessage = 'DANGER MORTEL : Excès d\'eau critique.';
+                $advice = 'Rentrez vos plantes ou couvrez-les impérativement. Elles ne supporteront pas cette quantité d\'eau.';
+            } 
+            // 2. Logique Spécifique par TYPE et STADE (Fruits)
+            elseif ((str_contains($plantType, 'fruit') || str_contains($plantName, 'tomate') || str_contains($plantName, 'cerise')) && 
+                   (str_contains($stage, 'fructification') || str_contains($stage, 'maturation'))) {
+                $alertMessage = sprintf('Risque Éclatement (Pluie %.1fmm).', $cumulativeRain);
+                $advice = 'Les fruits gorgés d\'eau risquent d\'éclater. Récoltez les fruits mûrs immédiatement avant la pluie !';
+            }
+            // 3. Logique Générale par TYPE
+            elseif (str_contains($plantType, 'légume')) {
+                $alertMessage = sprintf('Alerte Fortes Pluies (%.1fmm).', $cumulativeRain);
+                $advice = 'Risque de maladies fongiques et d\'asphyxie racinaire. Assurez un bon drainage.';
+            } elseif (str_contains($plantType, 'fleur')) {
+                $alertMessage = sprintf('Pluie Intense (%.1fmm).', $cumulativeRain);
+                $advice = 'Risque d\'abîmer les fleurs fragiles. Protégez-les ou tuteurez-les si possible.';
+            } 
+            // 4. Défaut
+            else {
+                $alertMessage = sprintf('Alerte Fortes Pluies (%.1fmm).', $cumulativeRain);
+                $advice = 'Risque de saturation du sol. N\'arrosez surtout pas et vérifiez le drainage.';
+            }
+
+            $fullMessage = $alertMessage . ' ' . $advice;
+            $decisions[] = $fullMessage;
+            $cards[] = [
+                'type' => 'danger_alert',
+                'severity' => 'warning',
+                'message' => $fullMessage,
+            ];
         }
 
         $maxTemp = $today['temperature_max'] ?? null;
