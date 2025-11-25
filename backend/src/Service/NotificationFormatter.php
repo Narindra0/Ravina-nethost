@@ -18,6 +18,8 @@ class NotificationFormatter
             NotificationType::ARROSAGE_RAPPEL => $this->formatArrosageRappel($context),
             NotificationType::ARROSAGE_OUBLIE => $this->formatArrosageOublie($context),
             NotificationType::PLANTATION_RETARD => $this->formatPlantationRetard($context),
+            NotificationType::RECOLTE_PROCHE => $this->formatRecolteProche($context),
+            NotificationType::FERTILISATION_RECOMMANDEE => $this->formatFertilisationRecommandee($context),
         };
     }
 
@@ -168,6 +170,43 @@ class NotificationFormatter
         }
 
         return null;
+    }
+
+    private function formatRecolteProche(array $context): array
+    {
+        $plant = $this->formatSinglePlantName($context);
+        $daysRemaining = $context['days_remaining'] ?? 7;
+
+        return [
+            'title' => 'Récolte bientôt prête',
+            'message' => sprintf(
+                'Votre %s sera bientôt prête à récolter ! Récolte prévue dans %d jour%s.',
+                $plant,
+                $daysRemaining,
+                $daysRemaining > 1 ? 's' : ''
+            ),
+        ];
+    }
+
+    private function formatFertilisationRecommandee(array $context): array
+    {
+        $plants = $this->formatPlantNames($context);
+        $phase = $context['phase'] ?? 'croissance';
+        $phaseText = match ($phase) {
+            'vegetative', 'végétative' => 'la phase végétative',
+            'flowering', 'floraison' => 'la floraison',
+            'fruiting', 'fructification' => 'la fructification',
+            default => 'une nouvelle phase de croissance',
+        };
+
+        return [
+            'title' => 'Fertilisation recommandée',
+            'message' => sprintf(
+                'Vos %s ont atteint %s. Une fertilisation est recommandée pour optimiser la croissance.',
+                $plants,
+                $phaseText
+            ),
+        ];
     }
 }
 

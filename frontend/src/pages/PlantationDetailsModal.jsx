@@ -15,6 +15,7 @@ import { Close, LocalFlorist, WaterDrop, LocationOn, Timeline, Visibility, Visib
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { api } from '../lib/axios'
+import HealthScoreCard from '../components/plantation/HealthScoreCard'
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -263,6 +264,9 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             />
           </Box>
         )}
+
+        {/* Health Score Section */}
+        <HealthScoreCard plantation={plantation} />
 
         <Divider sx={{ my: 1.5 }} />
 

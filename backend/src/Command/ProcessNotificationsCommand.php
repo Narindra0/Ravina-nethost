@@ -92,6 +92,8 @@ class ProcessNotificationsCommand extends Command
 
         $this->handleRainCancellation($plantation, $forecast, $nextWateringDate, $plantNames, $today, $io);
         $this->handlePlantationReminders($plantation, $plantName, $today, $io);
+        $this->handleHarvestReminder($plantation, $plantName, $today, $io);
+        $this->handleFertilizationRecommendation($plantation, $plantNames, $today, $io);
         $this->handleWateringReminder($plantation, $nextWateringDate, $forecast, $plantNames, $today, $now, $io);
         $this->handleWateringOverdue($plantation, $nextWateringDate, $plantNames, $now, $io);
     }
@@ -266,6 +268,103 @@ class ProcessNotificationsCommand extends Command
         );
 
         $io->text(sprintf('⚠️ Arrosage oublié pour plantation #%d.', $plantation->getId()));
+    }
+
+    private function handleHarvestReminder(
+        UserPlantation $plantation,
+        string $plantName,
+        DateTimeImmutable $today,
+        SymfonyStyle $io,
+    ): void {
+        // Only for confirmed plantations
+        $confirmedDate = $plantation->getConfirmationPlantation();
+        if (!$confirmedDate instanceof \DateTimeInterface) {
+            return;
+        }
+
+        $template = $plantation->getPlantTemplate();
+        $expectedHarvestDays = $template?->getExpectedHarvestDays();
+        if (!$expectedHarvestDays || $expectedHarvestDays <= 0) {
+            return;
+        }
+
+        // Calculate expected harvest date
+        $confirmed = DateTimeImmutable::createFromInterface($confirmedDate);
+        $expectedHarvestDate = $confirmed->add(new DateInterval(sprintf('P%dD', $expectedHarvestDays)));
+
+        // Calculate days until harvest
+        $daysUntilHarvest = (int) $today->diff($expectedHarvestDate)->format('%r%a');
+
+        // Send notification 7 days before harvest
+        if ($daysUntilHarvest === 7 && !$this->notificationServiceAlreadySent($plantation, NotificationType::RECOLTE_PROCHE, $today)) {
+            $this->notificationService->createNotification(
+                $plantation->getUser(),
+                NotificationType::RECOLTE_PROCHE,
+                [
+                    'plant_name' => $plantName,
+                    'days_remaining' => 7,
+                    'harvest_date' => $expectedHarvestDate,
+                ],
+                $plantation
+            );
+            $io->text(sprintf('🎉 Notification récolte proche pour plantation #%d.', $plantation->getId()));
+        }
+    }
+
+    private function handleFertilizationRecommendation(
+        UserPlantation $plantation,
+        array $plantNames,
+        DateTimeImmutable $today,
+        SymfonyStyle $io,
+    ): void {
+        // Only for confirmed plantations
+        $confirmedDate = $plantation->getConfirmationPlantation();
+        if (!$confirmedDate instanceof \DateTimeInterface) {
+            return;
+        }
+
+        $template = $plantation->getPlantTemplate();
+        $expectedHarvestDays = $template?->getExpectedHarvestDays();
+        if (!$expectedHarvestDays || $expectedHarvestDays <= 0) {
+            return;
+        }
+
+        // Calculate plant age in days
+        $confirmed = DateTimeImmutable::createFromInterface($confirmedDate);
+        $plantAgeDays = (int) $confirmed->diff($today)->format('%a');
+
+        // Calculate growth percentage
+        $growthPercentage = ($plantAgeDays / $expectedHarvestDays) * 100;
+
+        // Determine current phase and if we should notify
+        $phase = null;
+        $shouldNotify = false;
+
+        // Phase transitions: Végétative (~20%), Floraison (~40%), Fructification (~70%)
+        if ($growthPercentage >= 18 && $growthPercentage <= 22) {
+            $phase = 'végétative';
+            $shouldNotify = true;
+        } elseif ($growthPercentage >= 38 && $growthPercentage <= 42) {
+            $phase = 'floraison';
+            $shouldNotify = true;
+        } elseif ($growthPercentage >= 68 && $growthPercentage <= 72) {
+            $phase = 'fructification';
+            $shouldNotify = true;
+        }
+
+        if ($shouldNotify && $phase && !$this->notificationServiceAlreadySent($plantation, NotificationType::FERTILISATION_RECOMMANDEE, $today->sub(new DateInterval('P7D')))) {
+            $this->notificationService->createNotification(
+                $plantation->getUser(),
+                NotificationType::FERTILISATION_RECOMMANDEE,
+                [
+                    'plant_names' => $plantNames,
+                    'phase' => $phase,
+                    'growth_percentage' => $growthPercentage,
+                ],
+                $plantation
+            );
+            $io->text(sprintf('🌿 Notification fertilisation (%s) pour plantation #%d.', $phase, $plantation->getId()));
+        }
     }
 
     private function notificationServiceAlreadySent(
