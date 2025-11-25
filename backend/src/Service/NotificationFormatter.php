@@ -3,10 +3,14 @@
 namespace App\Service;
 
 use App\Enum\NotificationType;
+use DateTimeImmutable;
+use DateTimeInterface;
 
 class NotificationFormatter
 {
     /**
+     * @param NotificationType $type
+     * @param array<string, mixed> $context
      * @return array{title: string, message: string}
      */
     public function format(NotificationType $type, array $context = []): array
@@ -20,6 +24,7 @@ class NotificationFormatter
             NotificationType::PLANTATION_RETARD => $this->formatPlantationRetard($context),
             NotificationType::RECOLTE_PROCHE => $this->formatRecolteProche($context),
             NotificationType::FERTILISATION_RECOMMANDEE => $this->formatFertilisationRecommandee($context),
+            NotificationType::ALERTE_METEO => $this->formatAlerteMeteo($context),
         };
     }
 
@@ -30,7 +35,7 @@ class NotificationFormatter
         return [
             'title' => 'Pluie prévue aujourd\'hui',
             'message' => sprintf(
-                'Pluie prévue aujourd\'hui, l\'arrosage des %s n\'est plus nécessaire.',
+                "Pluie prévue aujourd'hui, l'arrosage des %s n'est plus nécessaire.",
                 $plants
             ),
         ];
@@ -58,7 +63,8 @@ class NotificationFormatter
         return [
             'title' => 'Jour de plantation',
             'message' => sprintf(
-                'C\'est aujourd\'hui ! Commençons la plantation de %s.',
+                // Correction : suppression du backslash inutile devant l'apostrophe dans une chaîne à guillemets doubles
+                "C'est aujourd'hui ! Commençons la plantation de %s.",
                 $plant
             ),
         ];
@@ -70,9 +76,9 @@ class NotificationFormatter
         $time = $this->formatTime($context['time'] ?? null);
 
         return [
-            'title' => 'Rappel d\'arrosage',
+            'title' => "Rappel d'arrosage",
             'message' => sprintf(
-                'N\'oubliez pas d\'arroser les %s%s.',
+                "N'oubliez pas d'arroser les %s%s.",
                 $plants,
                 $time ? " à {$time}" : ''
             ),
@@ -82,12 +88,13 @@ class NotificationFormatter
     private function formatArrosageOublie(array $context): array
     {
         $plants = $this->formatPlantNames($context);
-        $delay = $context['delay_hours'] ?? 48;
+        // Cast en int pour la sécurité
+        $delay = (int) ($context['delay_hours'] ?? 48);
 
         return [
             'title' => 'Arrosage manqué',
             'message' => sprintf(
-                'Attention, arrosage manqué ! Vous avez oublié d\'arroser les %s depuis plus de %d heures. Risque de dessèchement !',
+                "Attention, arrosage manqué ! Vous avez oublié d'arroser les %s depuis plus de %d heures. Risque de dessèchement !",
                 $plants,
                 $delay
             ),
@@ -102,14 +109,63 @@ class NotificationFormatter
         return [
             'title' => 'Enregistrement tardif',
             'message' => sprintf(
-                'Vous avez enregistré la plantation de %s avec %d jour%s de retard par rapport à la date de plantation effective.%s',
+                "Vous avez enregistré la plantation de %s avec %d jour%s de retard par rapport à la date de plantation effective.%s",
                 $plant,
                 $delayDays,
                 $delayDays > 1 ? 's' : '',
-                PHP_EOL . 'Afin d\'assurer un suivi précis de vos cultures, nous vous recommandons d\'enregistrer vos plantations dès qu\'elles sont effectuées.'
+                PHP_EOL . "Afin d'assurer un suivi précis de vos cultures, nous vous recommandons d'enregistrer vos plantations dès qu'elles sont effectuées."
             ),
         ];
     }
+
+    private function formatRecolteProche(array $context): array
+    {
+        $plant = $this->formatSinglePlantName($context);
+        $daysRemaining = (int) ($context['days_remaining'] ?? 7);
+
+        return [
+            'title' => 'Récolte bientôt prête',
+            'message' => sprintf(
+                "Votre %s sera bientôt prête à récolter ! Récolte prévue dans %d jour%s.",
+                $plant,
+                $daysRemaining,
+                $daysRemaining > 1 ? 's' : '' // 0 et 1 jour sont singuliers en français
+            ),
+        ];
+    }
+
+    private function formatFertilisationRecommandee(array $context): array
+    {
+        $plants = $this->formatPlantNames($context);
+        $phase = $context['phase'] ?? 'croissance';
+        
+        $phaseText = match (strtolower((string)$phase)) {
+            'vegetative', 'végétative' => 'la phase végétative',
+            'flowering', 'floraison' => 'la floraison',
+            'fruiting', 'fructification' => 'la fructification',
+            default => 'une nouvelle phase de croissance',
+        };
+
+        return [
+            'title' => 'Fertilisation recommandée',
+            'message' => sprintf(
+                "Vos %s ont atteint %s. Une fertilisation est recommandée pour optimiser la croissance.",
+                $plants,
+                $phaseText
+            ),
+        ];
+    }
+
+    private function formatAlerteMeteo(array $context): array
+    {
+        $message = (string) ($context['message'] ?? 'Alerte météo importante.');
+        return [
+            'title' => 'Alerte météo',
+            'message' => $message,
+        ];
+    }
+
+    // --- Méthodes utilitaires ---
 
     private function formatPlantNames(array $context): string
     {
@@ -119,9 +175,13 @@ class NotificationFormatter
             return $names;
         }
 
-        if (is_array($names) && $names !== []) {
+        // On s'assure que c'est bien un tableau et qu'il n'est pas vide
+        if (is_array($names) && !empty($names)) {
+            // Nettoyage : on s'assure que toutes les valeurs sont des chaînes
+            $names = array_map('strval', array_values($names));
+
             if (count($names) === 1) {
-                return (string) $names[0];
+                return $names[0];
             }
 
             $last = array_pop($names);
@@ -134,80 +194,41 @@ class NotificationFormatter
     private function formatSinglePlantName(array $context): string
     {
         $name = $context['plant_name'] ?? null;
-
-        if (is_string($name) && $name !== '') {
+        if (is_string($name) && trim($name) !== '') {
             return $name;
         }
-
+        // Fallback sur la méthode plurielle si le nom singulier est manquant
         return $this->formatPlantNames($context);
     }
 
-    private function formatDate(null|string|\DateTimeInterface $date): string
+    private function formatDate(mixed $date): string
     {
-        if ($date instanceof \DateTimeInterface) {
+        if ($date instanceof DateTimeInterface) {
             return $date->format('d/m/Y');
         }
 
-        if (is_string($date)) {
+        if (is_string($date) && !empty($date)) {
             try {
-                return (new \DateTimeImmutable($date))->format('d/m/Y');
+                return (new DateTimeImmutable($date))->format('d/m/Y');
             } catch (\Exception) {
-                // ignore
+                // En cas de format invalide, on continue vers le fallback
             }
         }
 
-        return (new \DateTimeImmutable())->format('d/m/Y');
+        // Fallback : date du jour par défaut
+        return (new DateTimeImmutable())->format('d/m/Y');
     }
 
-    private function formatTime(null|string|\DateTimeInterface $time): ?string
+    private function formatTime(mixed $time): ?string
     {
-        if ($time instanceof \DateTimeInterface) {
+        if ($time instanceof DateTimeInterface) {
             return $time->format('H\hi');
         }
 
-        if (is_string($time) && $time !== '') {
+        if (is_string($time) && trim($time) !== '') {
             return $time;
         }
 
         return null;
     }
-
-    private function formatRecolteProche(array $context): array
-    {
-        $plant = $this->formatSinglePlantName($context);
-        $daysRemaining = $context['days_remaining'] ?? 7;
-
-        return [
-            'title' => 'Récolte bientôt prête',
-            'message' => sprintf(
-                'Votre %s sera bientôt prête à récolter ! Récolte prévue dans %d jour%s.',
-                $plant,
-                $daysRemaining,
-                $daysRemaining > 1 ? 's' : ''
-            ),
-        ];
-    }
-
-    private function formatFertilisationRecommandee(array $context): array
-    {
-        $plants = $this->formatPlantNames($context);
-        $phase = $context['phase'] ?? 'croissance';
-        $phaseText = match ($phase) {
-            'vegetative', 'végétative' => 'la phase végétative',
-            'flowering', 'floraison' => 'la floraison',
-            'fruiting', 'fructification' => 'la fructification',
-            default => 'une nouvelle phase de croissance',
-        };
-
-        return [
-            'title' => 'Fertilisation recommandée',
-            'message' => sprintf(
-                'Vos %s ont atteint %s. Une fertilisation est recommandée pour optimiser la croissance.',
-                $plants,
-                $phaseText
-            ),
-        ];
-    }
 }
-
-
