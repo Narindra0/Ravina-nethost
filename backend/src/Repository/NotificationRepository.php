@@ -29,11 +29,9 @@ class NotificationRepository extends ServiceEntityRepository
             ->andWhere('n.userPlantation = :plantation')
             ->andWhere('n.type = :type')
             ->andWhere('n.createdAt >= :since')
-            ->setParameters([
-                'plantation' => $plantationId,
-                'type' => $type,
-                'since' => $since,
-            ])
+            ->setParameter('plantation', $plantationId)
+            ->setParameter('type', $type)
+            ->setParameter('since', $since)
             ->getQuery()
             ->getSingleScalarResult();
 
