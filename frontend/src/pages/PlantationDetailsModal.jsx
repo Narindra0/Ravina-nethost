@@ -100,19 +100,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const theme = useTheme()
   const isXs = useMediaQuery(theme.breakpoints.down('sm'))
 
-  if (!plantation) return null
-  const template = plantation.plantTemplate || {}
-  const snapshot = plantation.suiviSnapshots?.[0]
-  const decisionDetails = snapshot?.decisionDetailsJson ?? {}
-  const adviceCards = Array.isArray(decisionDetails.cards) ? decisionDetails.cards : []
-  const autoValidation = decisionDetails.auto_validation
-  const isAutoValidationToday =
-    !!autoValidation &&
-    autoValidation.reason === 'rain' &&
-    (autoValidation.message || '').includes("Pluie prévue aujourd'hui")
-  const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
-  const statusColor = getStatusColor(plantation.etatActuel)
-  const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
+  const snapshot = plantation?.suiviSnapshots?.[0]
 
   const hasWateredToday = React.useMemo(() => {
     if (!snapshot) return false
@@ -132,6 +120,19 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
     return isSameDay
   }, [snapshot])
+
+  if (!plantation) return null
+  const template = plantation.plantTemplate || {}
+  const decisionDetails = snapshot?.decisionDetailsJson ?? {}
+  const adviceCards = Array.isArray(decisionDetails.cards) ? decisionDetails.cards : []
+  const autoValidation = decisionDetails.auto_validation
+  const isAutoValidationToday =
+    !!autoValidation &&
+    autoValidation.reason === 'rain' &&
+    (autoValidation.message || '').includes("Pluie prévue aujourd'hui")
+  const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
+  const statusColor = getStatusColor(plantation.etatActuel)
+  const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
 
   const isWateringTooFar = d !== null && d > 2
 
