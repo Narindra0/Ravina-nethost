@@ -67,7 +67,7 @@ const DetailTile = ({ icon, label, value, color }) => (
   </Box>
 );
 
-// --- 1. Composant : Carte Météo Actuelle ---
+// --- 1. Composant : Carte Météo Actuelle (70% Largeur Desktop) ---
 function CurrentWeatherCard({ weather, formatDate, formatTime }) {
   return (
     <Card
@@ -158,7 +158,7 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
   );
 }
 
-// --- 2. Composant : Carte des Prévisions ---
+// --- 2. Composant : Carte des Prévisions (30% Largeur Desktop) ---
 function ForecastCard({ forecast }) {
   const formatForecastDay = (isoString) => {
     const date = new Date(isoString);
@@ -428,8 +428,8 @@ export default function WeatherDashboard() {
       )}
 
       <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
-        {/* Météo actuelle - display: flex pour uniformiser la hauteur/largeur */}
-        <Grid item xs={12} md={6} sx={{ display: 'flex', width: '100%' }}>
+        {/* Météo actuelle : 70% (md={8}) sur desktop, 100% sur mobile (xs={12}) */}
+        <Grid item xs={12} md={8} sx={{ display: 'flex', width: '100%' }}>
           <CurrentWeatherCard
             weather={weather}
             formatDate={formatDate}
@@ -437,8 +437,8 @@ export default function WeatherDashboard() {
           />
         </Grid>
 
-        {/* Prévisions */}
-        <Grid item xs={12} md={6} sx={{ display: 'flex', width: '100%' }}>
+        {/* Prévisions : 30% (md={4}) sur desktop, 100% sur mobile (xs={12}) */}
+        <Grid item xs={12} md={4} sx={{ display: 'flex', width: '100%' }}>
           <ForecastCard forecast={weather.forecast} />
         </Grid>
       </Grid>
