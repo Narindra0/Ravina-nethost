@@ -371,12 +371,15 @@ export default function Plantations() {
                   <span className="plantation-location-text">{plantation.localisation}</span>
                 </div>
 
-                <button
-                  className="plantation-details-button"
-                  onClick={() => setSelectedPlantation(plantation)}
-                >
-                  {isPlanned ? (daysDiff <= 0 ? "Planter" : "Détails") : "Détails"}
-                </button>
+                {/* Show button only for active plantations or planned ones that have reached J-0 */}
+                {(!isPlanned || daysDiff <= 0) && (
+                  <button
+                    className="plantation-details-button"
+                    onClick={() => setSelectedPlantation(plantation)}
+                  >
+                    {isPlanned ? "Planter" : "Détails"}
+                  </button>
+                )}
               </article>
             );
           })}

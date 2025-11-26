@@ -352,8 +352,15 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
               </Box>
             )}
 
-            {/* Health Score Section */}
-            <HealthScoreCard plantation={plantation} />
+            {/* Health Score Section - Only show after 15 days from confirmation */}
+            {(() => {
+              if (!plantation.confirmationPlantation) return null;
+              const confirmDate = new Date(plantation.confirmationPlantation);
+              const today = new Date();
+              const daysSinceConfirmation = Math.floor((today - confirmDate) / (1000 * 60 * 60 * 24));
+              if (daysSinceConfirmation < 15) return null;
+              return <HealthScoreCard plantation={plantation} />;
+            })()}
 
             <Divider sx={{ my: 1.5 }} />
 
@@ -373,16 +380,87 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
                   <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
                 ) : (
                   <Box display="flex" flexDirection="column" gap={1}>
-                    {lastSnapshots.map((s, idx) => (
-                      <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="body2" color="text.secondary">
-                          {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
-                        </Typography>
-                      </Box>
-                    ))}
+                    {(() => {
+                      const allSnapshots = plantation.suiviSnapshots || [];
+                      const confirmDate = plantation.confirmationPlantation
+                        ? new Date(plantation.confirmationPlantation).toISOString().split('T')[0]
+                        : null;
+
+                      // Create history events
+                      const events = [];
+                      let lastProgression = null;
+
+                      allSnapshots.forEach((s, idx) => {
+                        const snapshotDate = new Date(s.dateSnapshot).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short'
+                        });
+                        const snapshotDay = new Date(s.dateSnapshot).toISOString().split('T')[0];
+                        const progression = Math.round(parseFloat(s.progressionPourcentage || '0'));
+                        const details = s.decisionDetailsJson || {};
+
+                        // Check if this is the confirmation day
+                        if (confirmDate && snapshotDay === confirmDate && idx === allSnapshots.length - 1) {
+                          events.push({
+                            date: snapshotDate,
+                            description: 'Jour de plantation',
+                            type: 'plantation'
+                          });
+                          lastProgression = progression;
+                          return;
+                        }
+
+                        // Check for manual watering
+                        if (details.manual === true) {
+                          events.push({
+                            date: snapshotDate,
+                            description: 'Arrosage manuel fait',
+                            type: 'watering'
+                          });
+                        }
+
+                        // Check for auto-cancelled watering (rain)
+                        const autoVal = details.auto_validation;
+                        if (autoVal && autoVal.reason === 'rain') {
+                          const precipitationSum = s.meteoDataJson?.daily?.[0]?.precipitation_sum || 0;
+                          if (precipitationSum > 10) {
+                            events.push({
+                              date: snapshotDate,
+                              description: 'Arrosage annulé, forte pluie détectée',
+                              type: 'rain_heavy'
+                            });
+                          } else {
+                            events.push({
+                              date: snapshotDate,
+                              description: 'Pluie, arrosage annulé',
+                              type: 'rain'
+                            });
+                          }
+                        }
+
+                        // Show progression only if it changed
+                        if (lastProgression === null || progression !== lastProgression) {
+                          events.push({
+                            date: snapshotDate,
+                            description: `${s.stadeActuel || 'Croissance'} ${progression}%`,
+                            type: 'progression'
+                          });
+                          lastProgression = progression;
+                        }
+                      });
+
+                      // Reverse to show most recent first, but limit to last 5 events
+                      return events.slice(0, 5).map((event, idx) => (
+                        <Box key={idx} display="flex" gap={1} alignItems="flex-start">
+                          <Typography variant="body2" color="text.secondary" sx={{ minWidth: '60px', flexShrink: 0 }}>
+                            {event.date} :
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: event.type === 'plantation' ? 700 : 600 }}>
+                            {event.description}
+                          </Typography>
+                        </Box>
+                      ));
+                    })()}
                   </Box>
                 )
               )}
