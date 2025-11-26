@@ -227,9 +227,19 @@ export default function Plantations() {
             const firstAdviceCard = adviceCards[0];
             const hasAdviceSnippet = Boolean(firstAdviceCard?.message);
             const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0;
-            const isFuture = isPlantationFuture(plantation.datePlantation);
-            const daysRemaining = isFuture ? daysUntilPlantation(plantation.datePlantation) : 0;
-            const statusColor = isFuture ? '#f59e0b' : getStatusColor(plantation.etatActuel);
+            const isPlanned = plantation.etatActuel === 'ATTENTE';
+            // Calculate days difference relative to today
+            const getDaysDiff = (dateStr) => {
+              if (!dateStr) return 0;
+              const d = new Date(dateStr);
+              const t = new Date();
+              d.setHours(0, 0, 0, 0);
+              t.setHours(0, 0, 0, 0);
+              return Math.ceil((d - t) / (1000 * 60 * 60 * 24));
+            };
+            const daysDiff = getDaysDiff(plantation.datePlantation);
+
+            const statusColor = isPlanned ? '#3b82f6' : getStatusColor(plantation.etatActuel);
             const statusLabel = getStatusLabel(plantation.etatActuel);
             const plantImage = getPlantImagePath(template?.imageSlug);
             const currentStage = getCurrentStage(template?.cyclePhasesJson, progression);
@@ -260,7 +270,7 @@ export default function Plantations() {
                         style={{ backgroundColor: statusColor }}
                       >
                         <LocalFlorist className="status-icon" />
-                        {isFuture ? 'En attente' : statusLabel}
+                        {isPlanned ? 'En attente' : statusLabel}
                       </span>
                     </div>
                     {template?.type && (
@@ -269,20 +279,21 @@ export default function Plantations() {
                   </div>
                 </div>
 
-                {isFuture ? (
+                {isPlanned ? (
                   <div className="plantation-future-message">
                     <LocalFlorist className="plantation-future-message-icon" />
                     <p className="plantation-future-message-text">
-                      {daysRemaining === 1
-                        ? "Votre plantation est prévue pour demain !"
-                        : `Votre plantation est prévue dans ${daysRemaining} jour${daysRemaining > 1 ? 's' : ''}`
-                      }
+                      {daysDiff > 1 ? `Prévue dans ${daysDiff} jours` :
+                        daysDiff === 1 ? "Prévue pour demain" :
+                          daysDiff === 0 ? "Prévue pour aujourd'hui" :
+                            daysDiff === -1 ? "Prévue hier" :
+                              `Prévue il y a ${Math.abs(daysDiff)} jours`}
                     </p>
-                    {daysRemaining === 1 && (
+                    {daysDiff <= 1 && (
                       <p className="plantation-future-tip">
                         {isIndoorLocation(plantation.localisation)
-                          ? "💡 Drainez le pot : Préparez votre nouveau pot en vous assurant qu'il a un bon drainage (trous, billes d'argile) pour éviter l'excès d'eau."
-                          : "💡 Préparez le sol : Ameublissez et nettoyez les emplacements de plantation. Arrosez légèrement si le sol est très sec."
+                          ? "💡 Drainez le pot : Préparez votre nouveau pot en vous assurant qu'il a un bon drainage."
+                          : "💡 Préparez le sol : Ameublissez et nettoyez les emplacements de plantation."
                         }
                       </p>
                     )}
@@ -360,14 +371,12 @@ export default function Plantations() {
                   <span className="plantation-location-text">{plantation.localisation}</span>
                 </div>
 
-                {!isFuture && (
-                  <button
-                    className="plantation-details-button"
-                    onClick={() => setSelectedPlantation(plantation)}
-                  >
-                    Détails
-                  </button>
-                )}
+                <button
+                  className="plantation-details-button"
+                  onClick={() => setSelectedPlantation(plantation)}
+                >
+                  {isPlanned ? (daysDiff <= 0 ? "Planter" : "Détails") : "Détails"}
+                </button>
               </article>
             );
           })}

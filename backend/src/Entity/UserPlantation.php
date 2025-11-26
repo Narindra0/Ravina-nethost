@@ -52,6 +52,7 @@ class UserPlantation
     public const STATUS_HARVESTED = 'HARVESTED';
     public const STATUS_ARCHIVED = 'ARCHIVED';
     public const STATUS_PAUSED = 'PAUSED';
+    public const STATUS_PLANNED = 'ATTENTE';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -143,6 +144,7 @@ class UserPlantation
             self::STATUS_HARVESTED,
             self::STATUS_ARCHIVED,
             self::STATUS_PAUSED,
+            self::STATUS_PLANNED,
         ];
     }
 

@@ -23,6 +23,7 @@ const getStatusColor = (status) => {
     'HARVESTED': '#f59e0b',
     'ARCHIVED': '#6b7280',
     'PAUSED': '#ef4444',
+    'ATTENTE': '#3b82f6', // Blue for planned
   }
   return statusMap[status] || '#10b981'
 }
@@ -76,6 +77,22 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
       onClose?.()
     } catch (e) {
       setActionError("Impossible d'enregistrer l'arrosage.")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleConfirmPlantation = async () => {
+    if (!plantation?.id) return
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.post(`/plantations/${plantation.id}/confirm`, {}, {
+        headers: { Accept: 'application/ld+json' }
+      })
+      onClose?.()
+    } catch (e) {
+      setActionError("Impossible de confirmer la plantation.")
     } finally {
       setActionLoading(false)
     }
@@ -135,8 +152,10 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
 
   const isWateringTooFar = d !== null && d > 2
+  const isPlanned = plantation.etatActuel === 'ATTENTE'
 
   const getDisabledMessage = () => {
+    if (isPlanned) return null // Button is enabled for confirmation
     if (hasWateredToday) {
       return "Vous avez déjà arrosé cette plante aujourd'hui."
     }
@@ -150,11 +169,28 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   }
 
   const disabledMessage = getDisabledMessage()
-  const shouldDisableButton = !!disabledMessage
+  const shouldDisableButton = !!disabledMessage && !isPlanned
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
   const lastSnapshots = (plantation.suiviSnapshots || []).slice(0, 3)
+
+  const getPlannedMessage = () => {
+    if (!plantation.datePlantation) return null
+    const plannedDate = new Date(plantation.datePlantation)
+    const today = new Date()
+    // Reset hours to compare dates only
+    plannedDate.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    const diffTime = today - plannedDate
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return "Plantation prévue aujourd'hui."
+    if (diffDays === 1) return "Plantation prévue hier."
+    if (diffDays > 1) return `Plantation prévue il y a ${diffDays} jours.`
+    return `Plantation prévue le ${plannedDate.toLocaleDateString('fr-FR')}.`
+  }
 
   return (
     <Dialog
@@ -176,7 +212,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             </Typography>
           </Box>
           <Chip
-            label={plantation.etatActuel}
+            label={plantation.etatActuel === 'ATTENTE' ? 'EN ATTENTE' : plantation.etatActuel}
             sx={{
               bgcolor: statusColor,
               color: 'white',
@@ -213,131 +249,147 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           </Typography>
         </Box>
 
-        {/* Progression */}
-        {snapshot && (
+        {isPlanned ? (
           <Box mb={2}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{stage || 'Stade'}</Typography>
-              <Typography variant="subtitle2" color="text.secondary">{Math.round(progression)}%</Typography>
-            </Box>
-            <Box sx={{ width: '100%', height: 10, bgcolor: '#e5e7eb', borderRadius: 9999 }}>
-              <Box
-                sx={{
-                  width: `${Math.min(100, Math.max(0, progression))}%`,
-                  height: '100%',
-                  bgcolor: '#10b981',
-                  borderRadius: 9999,
-                }}
-              />
-            </Box>
-          </Box>
-        )}
-
-        {/* Arrosage */}
-        {snapshot && (
-          <Box display="flex" alignItems="flex-start" gap={1.5} mb={2}>
-            <WaterDrop sx={{ color: '#10b981', mt: '2px' }} />
-            <Box>
-              <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
-                {(() => {
-                  const daysText = d === 0 ? "aujourd'hui" : d === 1 ? "1 jour" : `${d} jours`;
-                  const dateText = new Date(snapshot.arrosageRecoDate).toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  });
-                  const quantityLiters = (parseFloat(snapshot.arrosageRecoQuantiteMl || 0) / 1000).toFixed(1);
-                  const literText = parseFloat(quantityLiters) > 1 ? 'litres' : 'litre';
-
-                  return `Le prochain arrosage est prévu dans ${daysText}, soit le ${dateText}, et nécessitera une quantité de ${quantityLiters} ${literText} d'eau.`;
-                })()}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {getPlannedMessage()}
               </Typography>
-            </Box>
+              <Typography variant="body2">
+                Cliquez sur "J'ai planté" pour confirmer la plantation et démarrer le suivi.
+              </Typography>
+            </Alert>
           </Box>
-        )}
-
-        {adviceCards.length > 0 && (
-          <Box mb={2}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-              Conseils & alertes
-            </Typography>
-            <Box display="flex" flexDirection="column" gap={1}>
-              {adviceCards.map((card, index) => (
-                <Alert
-                  key={`${card?.type ?? 'card'}-${index}`}
-                  severity={mapCardSeverity(card?.severity)}
-                  sx={{ borderRadius: 2 }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    {getCardTitle(card?.type)}
-                  </Typography>
-                  <Typography variant="body2">
-                    {card?.message}
-                  </Typography>
-                </Alert>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {/* Meteo Today */}
-        {meteoToday && (
-          <Box mb={2} display="flex" gap={1} alignItems="center" flexWrap="wrap">
-            <Chip
-              icon={<Timeline />}
-              label={`Pluie: ${meteoToday.precipitation_sum ?? 0} mm`}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            />
-            <Chip
-              label={`Max: ${meteoToday.temperature_max ?? '-'}°C`}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            />
-            <Chip
-              label={`Min: ${meteoToday.temperature_min ?? '-'}°C`}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            />
-          </Box>
-        )}
-
-        {/* Health Score Section */}
-        <HealthScoreCard plantation={plantation} />
-
-        <Divider sx={{ my: 1.5 }} />
-
-        {/* Historique récent */}
-        <Box>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <Timeline sx={{ color: '#6b7280' }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Historique</Typography>
-            </Box>
-            <IconButton size="small" onClick={() => setShowHistory(!showHistory)}>
-              {showHistory ? <VisibilityOff /> : <Visibility />}
-            </IconButton>
-          </Box>
-          {showHistory && (
-            lastSnapshots.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
-            ) : (
-              <Box display="flex" flexDirection="column" gap={1}>
-                {lastSnapshots.map((s, idx) => (
-                  <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
-                    </Typography>
-                  </Box>
-                ))}
+        ) : (
+          <>
+            {/* Progression */}
+            {snapshot && (
+              <Box mb={2}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{stage || 'Stade'}</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">{Math.round(progression)}%</Typography>
+                </Box>
+                <Box sx={{ width: '100%', height: 10, bgcolor: '#e5e7eb', borderRadius: 9999 }}>
+                  <Box
+                    sx={{
+                      width: `${Math.min(100, Math.max(0, progression))}%`,
+                      height: '100%',
+                      bgcolor: '#10b981',
+                      borderRadius: 9999,
+                    }}
+                  />
+                </Box>
               </Box>
-            )
-          )}
-        </Box>
+            )}
+
+            {/* Arrosage */}
+            {snapshot && (
+              <Box display="flex" alignItems="flex-start" gap={1.5} mb={2}>
+                <WaterDrop sx={{ color: '#10b981', mt: '2px' }} />
+                <Box>
+                  <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
+                    {(() => {
+                      const daysText = d === 0 ? "aujourd'hui" : d === 1 ? "1 jour" : `${d} jours`;
+                      const dateText = new Date(snapshot.arrosageRecoDate).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
+                      const quantityLiters = (parseFloat(snapshot.arrosageRecoQuantiteMl || 0) / 1000).toFixed(1);
+                      const literText = parseFloat(quantityLiters) > 1 ? 'litres' : 'litre';
+
+                      return `Le prochain arrosage est prévu dans ${daysText}, soit le ${dateText}, et nécessitera une quantité de ${quantityLiters} ${literText} d'eau.`;
+                    })()}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
+            {adviceCards.length > 0 && (
+              <Box mb={2}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                  Conseils & alertes
+                </Typography>
+                <Box display="flex" flexDirection="column" gap={1}>
+                  {adviceCards.map((card, index) => (
+                    <Alert
+                      key={`${card?.type ?? 'card'}-${index}`}
+                      severity={mapCardSeverity(card?.severity)}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {getCardTitle(card?.type)}
+                      </Typography>
+                      <Typography variant="body2">
+                        {card?.message}
+                      </Typography>
+                    </Alert>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Meteo Today */}
+            {meteoToday && (
+              <Box mb={2} display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                <Chip
+                  icon={<Timeline />}
+                  label={`Pluie: ${meteoToday.precipitation_sum ?? 0} mm`}
+                  variant="outlined"
+                  sx={{ borderRadius: 2 }}
+                />
+                <Chip
+                  label={`Max: ${meteoToday.temperature_max ?? '-'}°C`}
+                  variant="outlined"
+                  sx={{ borderRadius: 2 }}
+                />
+                <Chip
+                  label={`Min: ${meteoToday.temperature_min ?? '-'}°C`}
+                  variant="outlined"
+                  sx={{ borderRadius: 2 }}
+                />
+              </Box>
+            )}
+
+            {/* Health Score Section */}
+            <HealthScoreCard plantation={plantation} />
+
+            <Divider sx={{ my: 1.5 }} />
+
+            {/* Historique récent */}
+            <Box>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Timeline sx={{ color: '#6b7280' }} />
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Historique</Typography>
+                </Box>
+                <IconButton size="small" onClick={() => setShowHistory(!showHistory)}>
+                  {showHistory ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </Box>
+              {showHistory && (
+                lastSnapshots.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
+                ) : (
+                  <Box display="flex" flexDirection="column" gap={1}>
+                    {lastSnapshots.map((s, idx) => (
+                      <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )
+              )}
+            </Box>
+          </>
+        )}
+
       </DialogContent>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" px={2} py={1.5} gap={2} flexWrap="wrap">
@@ -363,12 +415,12 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           </Typography>
         ) : (
           <Button
-            onClick={handleWater}
+            onClick={isPlanned ? handleConfirmPlantation : handleWater}
             variant="contained"
             disabled={actionLoading}
-            sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
+            sx={{ backgroundColor: isPlanned ? '#3b82f6' : '#10b981', ':hover': { backgroundColor: isPlanned ? '#2563eb' : '#059669' } }}
           >
-            {actionLoading ? '...' : "J'ai arrosé"}
+            {actionLoading ? '...' : (isPlanned ? "J'ai planté" : "J'ai arrosé")}
           </Button>
         )}
       </Box>

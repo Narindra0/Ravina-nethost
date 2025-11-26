@@ -53,15 +53,17 @@ final class UserPlantationProcessor implements ProcessorInterface
                 : $today;
 
             // Cas 1 : date future -> en attente de confirmation, pas de date de confirmation
+            // Cas 1 : date future -> en attente de confirmation, pas de date de confirmation
             if ($plantationDate > $today) {
                 $data->setConfirmationPlantation(null);
+                if ($data->getEtatActuel() === null || $data->getEtatActuel() === UserPlantation::STATUS_ACTIVE) {
+                    $data->setEtatActuel(UserPlantation::STATUS_PLANNED);
+                }
             } else {
                 // Cas 2 : aujourd'hui -> confirmation automatique
                 // Cas 3 : date passée -> confirmation sur la date réelle indiquée
                 $data->setConfirmationPlantation($plantationDate);
-            }
-
-            if ($data->getEtatActuel() === null) {
+                // On force le statut ACTIF pour les plantations du jour ou passées
                 $data->setEtatActuel(UserPlantation::STATUS_ACTIVE);
             }
 
