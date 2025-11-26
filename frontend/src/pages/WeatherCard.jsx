@@ -22,7 +22,7 @@ import {
   Opacity,
   Speed,
   WbIncandescent,
-  DarkMode, // DarkMode n'était pas utilisé, mais je le garde
+  DarkMode,
 } from "@mui/icons-material";
 
 // --- DÉFINITION DES ICÔNES (partagée) ---
@@ -34,16 +34,15 @@ const weatherIcons = {
   45: <Cloud sx={{ fontSize: 60, color: "#90A4AE" }} />, // brouillard
   61: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, // pluie
   95: <Thunderstorm sx={{ fontSize: 60, color: "#9575CD" }} />, // orage
-  // Ajout de codes manquants (exemple)
   63: <WaterDrop sx={{ fontSize: 60, color: "#29B6F6" }} />, // Pluie modérée
   80: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, // Averses légères
 };
 
-// --- Tuile de détail (identique à votre code, réutilisée) ---
+// --- Tuile de détail ---
 const DetailTile = ({ icon, label, value, color }) => (
   <Box
     sx={{
-      height: "100%", // Garantit que toutes les tuiles ont la même hauteur
+      height: "100%",
       display: "flex",
       flexDirection: "row",
       alignItems: "center",
@@ -70,7 +69,6 @@ const DetailTile = ({ icon, label, value, color }) => (
 );
 
 // --- 1. Composant : Carte Météo Actuelle ---
-// (Votre carte d'origine, refactorisée pour recevoir les props)
 function CurrentWeatherCard({ weather, formatDate, formatTime }) {
   return (
     <Card
@@ -78,9 +76,9 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
         background: "linear-gradient(145deg, #4DB6AC, #26A69A)",
         color: "white",
         borderRadius: "20px",
-        p: { xs: 1.75, md: 3 }, // Padding responsive
+        p: { xs: 1.75, md: 3 },
         border: "1px solid rgba(255,255,255,0.2)",
-        height: "100%", // Pour s'aligner avec la carte de prévision
+        height: "100%",
       }}
     >
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
@@ -95,8 +93,7 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
             <Typography variant="h5" sx={{ fontWeight: "bold" }}>
               Antananarivo
             </Typography>
-            
-            {/* MODIFICATION: Format de date complet */}
+
             <Typography
               variant="body2"
               sx={{ color: "#B2DFDB", mb: 0.5, textTransform: "capitalize" }}
@@ -107,7 +104,6 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
               Mise à jour à {formatTime(weather.observationTime)}
             </Typography>
           </Box>
-          {/* Utilisation d'une icône par défaut (nuage) si le code est inconnu */}
           {weatherIcons[weather.weathercode] || weatherIcons[2]}
         </Box>
 
@@ -125,7 +121,7 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
           {weather.temperature}°C
         </Typography>
 
-        {/* MODIFICATION: Grille des détails (2x2 fixe) */}
+        {/* Grille des détails (2x2) */}
         <Grid container spacing={{ xs: 1.5, md: 2 }}>
           <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
             <DetailTile
@@ -167,18 +163,15 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
 
 // --- 2. Composant : Carte des Prévisions ---
 function ForecastCard({ forecast }) {
-  // Fonction pour formater le jour de la prévision
   const formatForecastDay = (isoString) => {
     const date = new Date(isoString);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Gérer "Demain"
     if (date.toDateString() === tomorrow.toDateString()) {
       return "Demain";
     }
 
-    // Retourner le nom du jour (ex: "Mercredi")
     return date.toLocaleDateString("fr-FR", {
       weekday: "long",
     });
@@ -294,7 +287,6 @@ function ForecastCard({ forecast }) {
 }
 
 // --- 3. Composant Principal (Dashboard) ---
-// (Gère l'état, l'API et la mise en page responsive)
 export default function WeatherDashboard() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -305,11 +297,9 @@ export default function WeatherDashboard() {
   const [error, setError] = useState(null);
   const [geoMessage, setGeoMessage] = useState(null);
 
-  // MODIFICATION: Fonctions de formatage séparées
   const formatDate = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    // Format: "Lundi, 28 mars"
     return date.toLocaleDateString("fr-FR", {
       weekday: "long",
       day: "numeric",
@@ -320,17 +310,15 @@ export default function WeatherDashboard() {
   const formatTime = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    // Format: "14:30"
     return date.toLocaleTimeString("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
-  // Récupération des données météo
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGeoMessage("La géolocalisation n’est pas disponible sur ce navigateur, lieu par défaut utilisé.");
+      setGeoMessage("La géolocalisation n'est pas disponible sur ce navigateur, lieu par défaut utilisé.");
       return;
     }
 
@@ -344,7 +332,7 @@ export default function WeatherDashboard() {
       },
       (err) => {
         console.warn("Géolocalisation refusée :", err);
-        setGeoMessage("Impossible d’accéder à votre position, données par défaut affichées.");
+        setGeoMessage("Impossible d'accéder à votre position, données par défaut affichées.");
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -393,7 +381,6 @@ export default function WeatherDashboard() {
     fetchWeather();
   }, [coords.latitude, coords.longitude]);
 
-  // --- RENDU : Chargement / Erreur ---
   if (loading) {
     return (
       <Box
@@ -423,20 +410,29 @@ export default function WeatherDashboard() {
       sx={{
         flexGrow: 1,
         width: "100%",
-        maxWidth: { xs: "100%", lg: 1024, xl: 1120 },
+        maxWidth: "100%",
         mx: "auto",
-        px: { xs: 1, sm: 2, md: 3 },
-        py: { xs: 1.5, md: 3 },
+        px: { xs: 2, sm: 2, md: 3 },
+        py: { xs: 2, md: 3 },
       }}
     >
+      {/* Message d'information géolocalisation/erreur */}
+      {(geoMessage || error) && (
+        <Typography
+          variant="body2"
+          sx={{
+            mb: 2,
+            color: geoMessage ? "#FFECB3" : "#FFCDD2",
+            textAlign: "center"
+          }}
+        >
+          {geoMessage || error}
+        </Typography>
+      )}
+
       <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
-        {/* Colonne de gauche: Météo actuelle */}
-        <Grid item xs={12} md={7} lg={6}>
-          {(geoMessage || error) && (
-            <Typography variant="body2" sx={{ mb: 2, color: geoMessage ? "#FFECB3" : "#FFCDD2" }}>
-              {geoMessage || error}
-            </Typography>
-          )}
+        {/* Météo actuelle - 50% sur grand écran, 100% sur petit écran */}
+        <Grid item xs={12} md={6}>
           <CurrentWeatherCard
             weather={weather}
             formatDate={formatDate}
@@ -444,8 +440,8 @@ export default function WeatherDashboard() {
           />
         </Grid>
 
-        {/* Colonne de droite: Prévisions */}
-        <Grid item xs={12} md={5} lg={6}>
+        {/* Prévisions - 50% sur grand écran, 100% sur petit écran */}
+        <Grid item xs={12} md={6}>
           <ForecastCard forecast={weather.forecast} />
         </Grid>
       </Grid>
