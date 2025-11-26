@@ -399,7 +399,7 @@ export default function WeatherDashboard() {
     );
   }
 
-  // --- RENDU : Dashboard Météo avec répartition exacte 70/30 ---
+  // --- RENDU : Dashboard Météo avec répartition 60/40 ---
   return (
     <Box
       sx={{
@@ -427,7 +427,7 @@ export default function WeatherDashboard() {
         </Typography>
       )}
 
-      {/* Layout 70/30 avec Flexbox pour grand écran, empilé sur mobile */}
+      {/* Layout 60/40 avec Flexbox pour grand écran, empilé sur mobile */}
       <Box
         sx={{
           display: "flex",
@@ -436,10 +436,10 @@ export default function WeatherDashboard() {
           alignItems: "stretch",
         }}
       >
-        {/* Météo actuelle : 70% sur desktop, 100% sur mobile */}
+        {/* Météo actuelle : 60% sur desktop, 100% sur mobile */}
         <Box
           sx={{
-            flex: { xs: "1 1 100%", md: "0 0 70%" },
+            flex: { xs: "1 1 100%", md: "0 0 60%" },
             minWidth: 0,
           }}
         >
@@ -450,10 +450,10 @@ export default function WeatherDashboard() {
           />
         </Box>
 
-        {/* Prévisions : 30% sur desktop, 100% sur mobile */}
+        {/* Prévisions : 40% sur desktop, 100% sur mobile */}
         <Box
           sx={{
-            flex: { xs: "1 1 100%", md: "0 0 calc(30% - 24px)" },
+            flex: { xs: "1 1 100%", md: "0 0 calc(40% - 24px)" },
             minWidth: 0,
           }}
         >
