@@ -21,9 +21,6 @@ import {
   CalendarMonth,
   AddCircleOutline,
   ArrowForward,
-  WbSunny,
-  Schedule,
-  // 🚀 Ajout de l'icône de menu
   Menu as MenuIcon,
   ArrowBack,
 } from '@mui/icons-material'
@@ -40,10 +37,9 @@ const getPlantImagePath = (imageSlug) => {
 
 const DEFAULT_PLANT_IMAGE = '/images/plantes/default.jpg'
 
-// Helper function to extract base plant name (remove parentheses content)
+// Helper function to extract base plant name
 const getDisplayName = (fullName) => {
   if (!fullName) return ''
-  // Extract text before opening parenthesis and trim whitespace
   const baseName = fullName.split('(')[0].trim()
   return baseName || fullName
 }
@@ -118,7 +114,7 @@ export default function Dashboard() {
       const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
       setPlants(templateData)
       setShowAllPlants(true)
-      setCurrentPage(1) // Reset to first page when viewing all
+      setCurrentPage(1) 
     } catch (err) {
       console.error('Erreur lors du chargement de toutes les plantes', err)
     } finally {
@@ -157,10 +153,10 @@ export default function Dashboard() {
 
   return (
     <Box sx={dashboardStyles.root}>
-      {/* 🚀 BOUTON DE MENU MOBILE : Affiché uniquement sur les petits écrans */}
+      {/* BOUTON DE MENU MOBILE */}
       <Box
         sx={{
-          display: { xs: 'block', md: 'none' }, // Visible uniquement sur mobile
+          display: { xs: 'block', md: 'none' }, 
           position: 'fixed',
           top: 10,
           left: 10,
@@ -171,14 +167,13 @@ export default function Dashboard() {
           color="primary"
           aria-label="open drawer"
           onClick={toggleSidebarMobile}
-          sx={{ backgroundColor: 'white', boxShadow: 3 }} // Style pour que le bouton ressorte
+          sx={{ backgroundColor: 'white', boxShadow: 3 }} 
         >
           <MenuIcon />
         </IconButton>
       </Box>
 
       {/* Sidebar */}
-      {/* 🚀 MISE À JOUR : Passage des props de contrôle mobile à Sidebar */}
       <Sidebar
         user={user}
         isMobileOpen={isSidebarMobileOpen}
@@ -203,9 +198,11 @@ export default function Dashboard() {
               </Typography>
             </Box>
 
-            {/* Feature Banner */}
+            {/* Feature Banner : WeatherCard avec Wrapper Spécifique */}
             <Suspense fallback={null}>
-              <WeatherCard />
+              <Box sx={{ p: 0, pb: '20px', width: '100%' }}>
+                <WeatherCard />
+              </Box>
             </Suspense>
 
             {/* Seasonal Suggestions */}
@@ -280,7 +277,7 @@ export default function Dashboard() {
               )}
             </Box>
 
-            {/* My Listings */}
+            {/* My Listings (Inventaire & Collection) */}
             <Box sx={dashboardStyles.sectionContainer}>
               <Box sx={dashboardStyles.sectionHeader}>
                 <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
@@ -411,7 +408,7 @@ export default function Dashboard() {
         )}
       </Box>
 
-      {/* Modal */}
+      {/* Modals */}
       <Suspense fallback={null}>
         <AddPlantModal
           open={showAddModal}
@@ -420,7 +417,6 @@ export default function Dashboard() {
         />
       </Suspense>
 
-      {/* Create Plantation Modal */}
       <Suspense fallback={null}>
         <CreateUserPlantationModal
           open={showCreatePlantationModal}

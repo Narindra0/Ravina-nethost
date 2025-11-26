@@ -22,20 +22,19 @@ import {
   Opacity,
   Speed,
   WbIncandescent,
-  DarkMode,
 } from "@mui/icons-material";
 
-// --- DÉFINITION DES ICÔNES (partagée) ---
+// --- DÉFINITION DES ICÔNES ---
 const weatherIcons = {
-  0: <WbSunny sx={{ fontSize: 60, color: "#FFD54F" }} />, // ciel clair
-  1: <WbTwilight sx={{ fontSize: 60, color: "#FFB300" }} />, // ensoleillé partiel
-  2: <Cloud sx={{ fontSize: 60, color: "#B0BEC5" }} />, // nuageux
-  3: <Cloud sx={{ fontSize: 60, color: "#90A4AE" }} />, // très nuageux
-  45: <Cloud sx={{ fontSize: 60, color: "#90A4AE" }} />, // brouillard
-  61: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, // pluie
-  95: <Thunderstorm sx={{ fontSize: 60, color: "#9575CD" }} />, // orage
-  63: <WaterDrop sx={{ fontSize: 60, color: "#29B6F6" }} />, // Pluie modérée
-  80: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, // Averses légères
+  0: <WbSunny sx={{ fontSize: 60, color: "#FFD54F" }} />, 
+  1: <WbTwilight sx={{ fontSize: 60, color: "#FFB300" }} />, 
+  2: <Cloud sx={{ fontSize: 60, color: "#B0BEC5" }} />, 
+  3: <Cloud sx={{ fontSize: 60, color: "#90A4AE" }} />, 
+  45: <Cloud sx={{ fontSize: 60, color: "#90A4AE" }} />, 
+  61: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, 
+  95: <Thunderstorm sx={{ fontSize: 60, color: "#9575CD" }} />, 
+  63: <WaterDrop sx={{ fontSize: 60, color: "#29B6F6" }} />, 
+  80: <WaterDrop sx={{ fontSize: 60, color: "#4FC3F7" }} />, 
 };
 
 // --- Tuile de détail ---
@@ -79,10 +78,10 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
         p: { xs: 1.75, md: 3 },
         border: "1px solid rgba(255,255,255,0.2)",
         height: "100%",
+        width: "100%", // Force la largeur totale
       }}
     >
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-        {/* En-tête : Ville, Heure, Icône */}
         <Box
           display="flex"
           justifyContent="space-between"
@@ -107,7 +106,6 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
           {weatherIcons[weather.weathercode] || weatherIcons[2]}
         </Box>
 
-        {/* Température principale */}
         <Typography
           variant="h1"
           sx={{
@@ -121,7 +119,6 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
           {weather.temperature}°C
         </Typography>
 
-        {/* Grille des détails (2x2) */}
         <Grid container spacing={{ xs: 1.5, md: 2 }}>
           <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
             <DetailTile
@@ -186,6 +183,7 @@ function ForecastCard({ forecast }) {
         border: "1px solid rgba(38, 166, 154, 0.12)",
         boxShadow: "0 18px 35px rgba(16, 185, 129, 0.12)",
         height: "100%",
+        width: "100%", // Force la largeur totale
       }}
     >
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
@@ -412,11 +410,10 @@ export default function WeatherDashboard() {
         width: "100%",
         maxWidth: "100%",
         mx: "auto",
-        px: { xs: 2, sm: 2, md: 3 },
-        py: { xs: 2, md: 3 },
+        px: { xs: 0, sm: 2, md: 3 }, // Pas de padding horizontal sur mobile
+        py: { xs: 0, md: 3 }, // Le padding vertical est géré par le parent
       }}
     >
-      {/* Message d'information géolocalisation/erreur */}
       {(geoMessage || error) && (
         <Typography
           variant="body2"
@@ -431,8 +428,8 @@ export default function WeatherDashboard() {
       )}
 
       <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
-        {/* Météo actuelle - 50% sur grand écran, 100% sur petit écran */}
-        <Grid item xs={12} md={6}>
+        {/* Météo actuelle - display: flex pour uniformiser la hauteur/largeur */}
+        <Grid item xs={12} md={6} sx={{ display: 'flex', width: '100%' }}>
           <CurrentWeatherCard
             weather={weather}
             formatDate={formatDate}
@@ -440,8 +437,8 @@ export default function WeatherDashboard() {
           />
         </Grid>
 
-        {/* Prévisions - 50% sur grand écran, 100% sur petit écran */}
-        <Grid item xs={12} md={6}>
+        {/* Prévisions */}
+        <Grid item xs={12} md={6} sx={{ display: 'flex', width: '100%' }}>
           <ForecastCard forecast={weather.forecast} />
         </Grid>
       </Grid>
