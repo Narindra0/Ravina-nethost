@@ -5,7 +5,6 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Grid,
   List,
   ListItem,
   ListItemIcon,
@@ -67,7 +66,7 @@ const DetailTile = ({ icon, label, value, color }) => (
   </Box>
 );
 
-// --- 1. Composant : Carte Météo Actuelle (70% Largeur Desktop) ---
+// --- 1. Composant : Carte Météo Actuelle ---
 function CurrentWeatherCard({ weather, formatDate, formatTime }) {
   return (
     <Card
@@ -75,10 +74,10 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
         background: "linear-gradient(145deg, #4DB6AC, #26A69A)",
         color: "white",
         borderRadius: "20px",
-        p: { xs: 1.75, md: 3 },
+        p: { xs: 2, md: 3 },
         border: "1px solid rgba(255,255,255,0.2)",
         height: "100%",
-        width: "100%", // Force la largeur totale
+        width: "100%",
       }}
     >
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
@@ -119,46 +118,44 @@ function CurrentWeatherCard({ weather, formatDate, formatTime }) {
           {weather.temperature}°C
         </Typography>
 
-        <Grid container spacing={{ xs: 1.5, md: 2 }}>
-          <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
-            <DetailTile
-              icon={<Thermostat />}
-              label="Ressenti"
-              value={`${(weather.temperature - 1).toFixed(1)}°C`}
-              color="#FFCC80"
-            />
-          </Grid>
-          <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
-            <DetailTile
-              icon={<Speed />}
-              label="Vent"
-              value={`${weather.windspeed} km/h`}
-              color="#81D4FA"
-            />
-          </Grid>
-          <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
-            <DetailTile
-              icon={<Opacity />}
-              label="Pluie (24h)"
-              value={`${weather.precipitationSum} mm`}
-              color="#90CAF9"
-            />
-          </Grid>
-          <Grid item xs={6} sx={{ height: { xs: "78px", md: "84px" } }}>
-            <DetailTile
-              icon={<WbIncandescent />}
-              label="Index UV Max"
-              value={weather.uv}
-              color="#FFEB3B"
-            />
-          </Grid>
-        </Grid>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr" },
+            gap: { xs: 1.5, md: 2 },
+          }}
+        >
+          <DetailTile
+            icon={<Thermostat />}
+            label="Ressenti"
+            value={`${(weather.temperature - 1).toFixed(1)}°C`}
+            color="#FFCC80"
+          />
+          <DetailTile
+            icon={<Speed />}
+            label="Vent"
+            value={`${weather.windspeed} km/h`}
+            color="#81D4FA"
+          />
+          <DetailTile
+            icon={<Opacity />}
+            label="Pluie (24h)"
+            value={`${weather.precipitationSum} mm`}
+            color="#90CAF9"
+          />
+          <DetailTile
+            icon={<WbIncandescent />}
+            label="Index UV Max"
+            value={weather.uv}
+            color="#FFEB3B"
+          />
+        </Box>
       </CardContent>
     </Card>
   );
 }
 
-// --- 2. Composant : Carte des Prévisions (30% Largeur Desktop) ---
+// --- 2. Composant : Carte des Prévisions ---
 function ForecastCard({ forecast }) {
   const formatForecastDay = (isoString) => {
     const date = new Date(isoString);
@@ -178,12 +175,12 @@ function ForecastCard({ forecast }) {
     <Card
       sx={{
         borderRadius: "24px",
-        p: { xs: 1.5, sm: 2.5, md: 3.5 },
+        p: { xs: 2, sm: 2.5, md: 3.5 },
         background: "linear-gradient(180deg, #ffffff 0%, #f5fffd 100%)",
         border: "1px solid rgba(38, 166, 154, 0.12)",
         boxShadow: "0 18px 35px rgba(16, 185, 129, 0.12)",
         height: "100%",
-        width: "100%", // Force la largeur totale
+        width: "100%",
       }}
     >
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
@@ -402,16 +399,16 @@ export default function WeatherDashboard() {
     );
   }
 
-  // --- RENDU : Dashboard Météo (Responsive) ---
+  // --- RENDU : Dashboard Météo avec répartition exacte 70/30 ---
   return (
     <Box
       sx={{
         flexGrow: 1,
         width: "100%",
-        maxWidth: "100%",
+        maxWidth: "1400px",
         mx: "auto",
-        px: { xs: 0, sm: 2, md: 3 }, // Pas de padding horizontal sur mobile
-        py: { xs: 0, md: 3 }, // Le padding vertical est géré par le parent
+        px: { xs: 2, sm: 2, md: 3 },
+        py: { xs: 2, md: 3 },
       }}
     >
       {(geoMessage || error) && (
@@ -420,28 +417,49 @@ export default function WeatherDashboard() {
           sx={{
             mb: 2,
             color: geoMessage ? "#FFECB3" : "#FFCDD2",
-            textAlign: "center"
+            textAlign: "center",
+            backgroundColor: geoMessage ? "rgba(255, 193, 7, 0.1)" : "rgba(244, 67, 54, 0.1)",
+            padding: "8px 16px",
+            borderRadius: "8px",
           }}
         >
           {geoMessage || error}
         </Typography>
       )}
 
-      <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
-        {/* Météo actuelle : 70% (md={8}) sur desktop, 100% sur mobile (xs={12}) */}
-        <Grid item xs={12} md={8} sx={{ display: 'flex', width: '100%' }}>
+      {/* Layout 70/30 avec Flexbox pour grand écran, empilé sur mobile */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          gap: { xs: 2, md: 3 },
+          alignItems: "stretch",
+        }}
+      >
+        {/* Météo actuelle : 70% sur desktop, 100% sur mobile */}
+        <Box
+          sx={{
+            flex: { xs: "1 1 100%", md: "0 0 70%" },
+            minWidth: 0,
+          }}
+        >
           <CurrentWeatherCard
             weather={weather}
             formatDate={formatDate}
             formatTime={formatTime}
           />
-        </Grid>
+        </Box>
 
-        {/* Prévisions : 30% (md={4}) sur desktop, 100% sur mobile (xs={12}) */}
-        <Grid item xs={12} md={4} sx={{ display: 'flex', width: '100%' }}>
+        {/* Prévisions : 30% sur desktop, 100% sur mobile */}
+        <Box
+          sx={{
+            flex: { xs: "1 1 100%", md: "0 0 calc(30% - 24px)" },
+            minWidth: 0,
+          }}
+        >
           <ForecastCard forecast={weather.forecast} />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 }
