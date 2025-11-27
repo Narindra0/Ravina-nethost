@@ -50,12 +50,12 @@ class ProcessNotificationsCommand extends Command
         $io->title('Traitement des notifications automatiques');
 
         $plantations = $this->plantationRepository->createQueryBuilder('p')
-            ->andWhere('p.etatActuel = :status')
-            ->setParameter('status', UserPlantation::STATUS_ACTIVE)
+            ->andWhere('p.etatActuel IN (:statuses)')
+            ->setParameter('statuses', [UserPlantation::STATUS_ACTIVE, UserPlantation::STATUS_PLANNED])
             ->getQuery()
             ->getResult();
 
-        $io->text(sprintf('%d plantations actives à analyser.', count($plantations)));
+        $io->text(sprintf('%d plantations (actives et en attente) à analyser.', count($plantations)));
 
         $processed = 0;
         foreach ($plantations as $plantation) {
@@ -95,10 +95,14 @@ class ProcessNotificationsCommand extends Command
         $this->handleRainCancellation($plantation, $forecast, $nextWateringDate, $autoValidation, $plantNames, $today, $io);
         $this->handleWeatherAlerts($plantation, $wateringData, $plantNames, $today, $io);
         $this->handlePlantationReminders($plantation, $plantName, $today, $io);
+        $this->handlePlantationOverdue($plantation, $plantName, $today, $io);
         $this->handleHarvestReminder($plantation, $plantName, $today, $io);
         $this->handleFertilizationRecommendation($plantation, $plantNames, $today, $io);
         $this->handleWateringReminder($plantation, $nextWateringDate, $forecast, $plantNames, $today, $now, $io);
         $this->handleWateringOverdue($plantation, $nextWateringDate, $plantNames, $now, $io);
+        
+        // Auto-delete must be last (after all notifications)
+        $this->handlePlantationAutoDelete($plantation, $today, $io);
     }
 
     private function handleWeatherAlerts(
@@ -447,6 +451,88 @@ class ProcessNotificationsCommand extends Command
             $type->value,
             $sinceStart
         );
+    }
+
+    private function handlePlantationOverdue(
+        UserPlantation $plantation,
+        string $plantName,
+        DateTimeImmutable $today,
+        SymfonyStyle $io,
+    ): void {
+        // Only for ATTENTE plantations that are not confirmed
+        if ($plantation->getEtatActuel() !== UserPlantation::STATUS_PLANNED) {
+            return;
+        }
+
+        $plannedDate = $plantation->getDatePlantation();
+        if (!$plannedDate instanceof \DateTimeInterface || $plantation->getConfirmationPlantation() !== null) {
+            return;
+        }
+
+        $plannedImmutable = DateTimeImmutable::createFromInterface($plannedDate);
+        $delayDays = (int) $plannedImmutable->diff($today)->format('%r%a');
+
+        // Only send notifications if the plantation is overdue (delay >= 2)
+        if ($delayDays < 2) {
+            return;
+        }
+
+        // Send notification at J+2, J+5, J+8, J+11 (every 3 days starting from J+2)
+        // J+2: delayDays = 2
+        // J+5: delayDays = 5
+        // J+8: delayDays = 8
+        // J+11: delayDays = 11
+        // Pattern: delayDays = 2, 5, 8, 11 => (delayDays - 2) % 3 == 0
+        if (($delayDays - 2) % 3 !== 0) {
+            return;
+        }
+
+        // Avoid sending duplicate notifications (check if sent in last 2 days)
+        if ($this->notificationServiceAlreadySent($plantation, NotificationType::PLANTATION_RETARD, $today->sub(new DateInterval('P2D')))) {
+            return;
+        }
+
+        $this->notificationService->createNotification(
+            $plantation->getUser(),
+            NotificationType::PLANTATION_RETARD,
+            [
+                'plant_name' => $plantName,
+                'delay_days' => $delayDays,
+            ],
+            $plantation
+        );
+
+        $io->text(sprintf('⚠️ Notification plantation en retard (J+%d) pour plantation #%d.', $delayDays, $plantation->getId()));
+    }
+
+    private function handlePlantationAutoDelete(
+        UserPlantation $plantation,
+        DateTimeImmutable $today,
+        SymfonyStyle $io,
+    ): void {
+        // Only for ATTENTE plantations that are not confirmed
+        if ($plantation->getEtatActuel() !== UserPlantation::STATUS_PLANNED) {
+            return;
+        }
+
+        $plannedDate = $plantation->getDatePlantation();
+        if (!$plannedDate instanceof \DateTimeInterface || $plantation->getConfirmationPlantation() !== null) {
+            return;
+        }
+
+        $plannedImmutable = DateTimeImmutable::createFromInterface($plannedDate);
+        $delayDays = (int) $plannedImmutable->diff($today)->format('%r%a');
+
+        // Auto-delete after 13 days without confirmation
+        if ($delayDays >= 13) {
+            $plantationId = $plantation->getId();
+            $plantName = $plantation->getPlantTemplate()?->getName() ?? 'plante inconnue';
+            
+            $this->entityManager->remove($plantation);
+            $this->entityManager->flush();
+            
+            $io->text(sprintf('🗑️ Plantation #%d (%s) supprimée automatiquement après %d jours sans confirmation.', $plantationId, $plantName, $delayDays));
+        }
     }
 }
 
