@@ -84,19 +84,47 @@ class TrefleApiService
      */
     private function determinePlantType(array $plant): string
     {
-        $vegetableType = $plant['vegetable'] ?? false;
+        $vegetableFlag = (bool) ($plant['vegetable'] ?? false);
+        $family = strtolower((string) ($plant['family_common_name'] ?? ''));
+        $commonName = strtolower((string) ($plant['common_name'] ?? $plant['scientific_name'] ?? ''));
+        $mainSpecies = $plant['main_species'] ?? [];
+        $edibleParts = strtolower(implode(' ', (array) ($mainSpecies['edible_part'] ?? [])));
 
-        if ($vegetableType) {
+        // 1. Indicateur direct Trefle
+        if ($vegetableFlag) {
             return 'Légume';
         }
 
-        // Vérifier si c'est un fruit
-        $family = $plant['family_common_name'] ?? '';
-        if (str_contains(strtolower($family), 'fruit')) {
+        // 2. Parties comestibles
+        if (str_contains($edibleParts, 'fruit')) {
+            return 'Fruit';
+        }
+        if (
+            str_contains($edibleParts, 'leaf') ||
+            str_contains($edibleParts, 'root') ||
+            str_contains($edibleParts, 'stem') ||
+            str_contains($edibleParts, 'seed')
+        ) {
+            return 'Légume';
+        }
+
+        // 3. Heuristiques sur le nom (fruits les plus courants)
+        if (preg_match('/(banan|mangue|mango|orange|citron|citrum|pomm|poire|raisin|frais|tomat|ananas|litchi|lichi|papay|melon|past(e?̀|e)que|cacao|cafe)/', $commonName)) {
             return 'Fruit';
         }
 
-        return 'Plante';
+        // 4. Familles fruitières
+        if (str_contains($family, 'fruit')) {
+            return 'Fruit';
+        }
+
+        // 5. Heuristique "herbes aromatiques" -> légumes par défaut
+        if (preg_match('/(basilic|menthe|persil|romarin|thym|ciboulette|aneth|coriandre|estragon)/', $commonName)) {
+            return 'Légume';
+        }
+
+        // 6. Fallback : éviter "Plante" générique
+        return 'Légume';
     }
 
     /**
