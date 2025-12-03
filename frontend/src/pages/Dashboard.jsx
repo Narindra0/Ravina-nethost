@@ -196,6 +196,20 @@ export default function Dashboard() {
     'manioc',
   ]
 
+  // Filtre utilitaire : privilégier les noms de plantes courts et simples
+  const isSimpleCommonName = (name) => {
+    if (!name) return false
+    const base = getDisplayName(name)
+    if (!base) return false
+
+    if (base.length > 32) return false
+
+    const words = base.trim().split(/\s+/)
+    if (words.length > 4) return false
+
+    return true
+  }
+
   const curatedSuggestions = useMemo(() => {
     if (suggestionList.length === 0) {
       return []
@@ -214,6 +228,18 @@ export default function Dashboard() {
       }
     }
 
+    // On privilégie d'abord les noms simples dans les suggestions saisonnières
+    const bySimplicity = [...workingList].sort((a, b) => {
+      const aSimple = isSimpleCommonName(a.name) ? 0 : 1
+      const bSimple = isSimpleCommonName(b.name) ? 0 : 1
+
+      if (aSimple !== bSimple) return aSimple - bSimple
+
+      const aLen = (getDisplayName(a.name) || '').length
+      const bLen = (getDisplayName(b.name) || '').length
+      return aLen - bLen
+    })
+
     const categories = {
       Herbe: [],
       Fruit: [],
@@ -221,7 +247,7 @@ export default function Dashboard() {
       Rosier: [],
     }
 
-    workingList.forEach((plant) => {
+    bySimplicity.forEach((plant) => {
       const type = (plant.type || '').toLowerCase()
       if (type.includes('herbe') || type.includes('aromatique')) {
         categories.Herbe.push(plant)
@@ -261,7 +287,16 @@ export default function Dashboard() {
       const bPriority = madagascarPriorityList.findIndex((keyword) => bName.includes(keyword))
 
       const normalize = (value) => (value === -1 ? Number.MAX_SAFE_INTEGER : value)
-      return normalize(aPriority) - normalize(bPriority)
+
+      const diff = normalize(aPriority) - normalize(bPriority)
+      if (diff !== 0) return diff
+
+      // À priorité égale, les noms plus courts et simples d'abord
+      const aSimple = isSimpleCommonName(a.name) ? 0 : 1
+      const bSimple = isSimpleCommonName(b.name) ? 0 : 1
+      if (aSimple !== bSimple) return aSimple - bSimple
+
+      return aName.localeCompare(bName)
     })
   }, [plants])
 
@@ -325,11 +360,25 @@ export default function Dashboard() {
 
     const baseList = madagascarPlants.length > 0 ? madagascarPlants : suggestionList
 
+    // Trier pour mettre en avant les plantes aux noms simples et courts
+    const sortedBase = [...baseList].sort((a, b) => {
+      const aSimple = isSimpleCommonName(a.name) ? 0 : 1
+      const bSimple = isSimpleCommonName(b.name) ? 0 : 1
+      if (aSimple !== bSimple) return aSimple - bSimple
+
+      const aLen = (getDisplayName(a.name) || '').length
+      const bLen = (getDisplayName(b.name) || '').length
+
+      if (aLen !== bLen) return aLen - bLen
+
+      return (a.name || '').localeCompare(b.name || '')
+    })
+
     if (!query) {
-      return baseList
+      return sortedBase
     }
 
-    return baseList.filter((plant) => {
+    return sortedBase.filter((plant) => {
       const haystack = [
         plant.name,
         plant.type,
@@ -659,6 +708,9 @@ export default function Dashboard() {
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
                         Catalogue RAVINA+
                       </Typography>
+                      <Typography variant="body2" sx={{ color: '#6b7280', mt: 0.5 }}>
+                        Sélection de fruits et légumes adaptés à Madagascar, issus de Trefle.io.
+                      </Typography>
                     </Box>
                     <TextField
                       value={catalogSearch}
@@ -701,11 +753,11 @@ export default function Dashboard() {
                             border: '1px solid #e2e8f0',
                             backgroundColor: '#ffffff',
                             boxShadow: '0 10px 18px rgba(15,23,42,0.08)',
-                            px: 1.5,
-                            py: 1.25,
+                            px: 1.75,
+                            py: 1.5,
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1.5,
+                            gap: 1.75,
                             transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
                             cursor: 'default',
                             '&:hover': {
@@ -765,6 +817,22 @@ export default function Dashboard() {
                             >
                               {plant.type} • {plant.sunExposure}
                             </Typography>
+                            {madagascarPriorityList.some((keyword) =>
+                              (plant.name || '').toLowerCase().includes(keyword)
+                            ) && (
+                              <Chip
+                                label="Madagascar"
+                                size="small"
+                                sx={{
+                                  mt: 0.5,
+                                  backgroundColor: '#fef3c7',
+                                  color: '#b45309',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.08em',
+                                }}
+                              />
+                            )}
                           </Box>
                           <Box
                             sx={{

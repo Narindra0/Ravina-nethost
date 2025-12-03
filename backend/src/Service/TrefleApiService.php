@@ -53,11 +53,64 @@ class TrefleApiService
             $data = $response->toArray();
             $plants = $data['data'] ?? [];
 
+            // Heuristiques pour Madagascar : cultures prioritaires & exclusions
+            $priorityKeywords = [
+                // Fruits tropicaux & malgaches
+                'vanille', 'vanilla',
+                'litchi', 'lychee', 'lichi',
+                'mangue', 'mango',
+                'banane', 'banana',
+                'ananas', 'pineapple',
+                'papaye', 'papaya',
+                'kaki',
+                'orange',
+                'citron', 'lemon', 'lime',
+                'pomme', 'apple',
+                'poire', 'pear',
+                'raisin', 'grape',
+                'fraise', 'strawberry',
+                // Cultures de base
+                'riz', 'rice',
+                'café', 'cafe', 'coffee',
+                'cacao', 'cocoa',
+                'girofle', 'clove',
+                'ylang',
+                // Légumes courants
+                'tomate', 'tomato',
+                'carotte', 'carrot',
+                'salade', 'laitue', 'lettuce',
+                'oignon', 'onion',
+                'ail', 'garlic',
+                'piment', 'chili', 'pepper',
+                'courgette', 'zucchini',
+                'chou', 'cabbage',
+                'patate douce', 'sweet potato',
+                'pomme de terre', 'potato',
+                'manioc', 'cassava',
+            ];
+
+            // Liste (non exhaustive) de plantes à faible intérêt pour l'appli (mauvaises herbes, ornementales sans intérêt alimentaire)
+            $excludedKeywords = [
+                'milfoil',
+                'sorrel',
+                'plantain',
+                'shepherd\'s-purse',
+                'shepherds purse',
+                'ragwort',
+                'thistle',
+                'dandelion',
+                'burdock',
+                'dock',
+                'knotweed',
+            ];
+
             // Transformation des données Trefle en format compatible
-            $suggestions = array_map(function ($plant) use ($season) {
+            $mapped = array_map(function ($plant) use ($season) {
+                $name = $plant['common_name'] ?? $plant['scientific_name'] ?? 'Plante inconnue';
+
                 return [
                     'id' => $plant['id'],
-                    'name' => $plant['common_name'] ?? $plant['scientific_name'] ?? 'Plante inconnue',
+                    'name' => $name,
                     'type' => $this->determinePlantType($plant),
                     'bestSeason' => $season,
                     'wateringFrequency' => $this->determineWateringFrequency($plant),
@@ -65,7 +118,72 @@ class TrefleApiService
                     'imageSlug' => $plant['image_url'] ?? null,
                     'source' => 'trefle',
                 ];
-            }, array_slice($plants, 0, 20)); // Limiter à 20 résultats
+            }, $plants);
+
+            // 1) Exclure les plantes non pertinentes (mauvaises herbes, etc.)
+            $mapped = array_filter($mapped, function (array $plant) use ($excludedKeywords) {
+                $name = mb_strtolower($plant['name'] ?? '');
+
+                foreach ($excludedKeywords as $needle) {
+                    if (str_contains($name, $needle)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // 2) Séparer les plantes prioritaires (fort intérêt économique à Madagascar)
+            $prioritary = [];
+            $secondary = [];
+
+            foreach ($mapped as $plant) {
+                $name = mb_strtolower($plant['name'] ?? '');
+                $isPriority = false;
+
+                foreach ($priorityKeywords as $needle) {
+                    if (str_contains($name, mb_strtolower($needle))) {
+                        $isPriority = true;
+                        break;
+                    }
+                }
+
+                if ($isPriority) {
+                    $prioritary[] = $plant;
+                } else {
+                    $secondary[] = $plant;
+                }
+            }
+
+            // 3) Appliquer une règle de "nom simple" pour les suggestions
+            $isSimpleName = function (array $plant): bool {
+                $name = trim((string) ($plant['name'] ?? ''));
+                if ($name === '' || $name === 'Plante inconnue') {
+                    return false;
+                }
+
+                // Longueur max raisonnable pour l'autocomplétion
+                if (mb_strlen($name) > 32) {
+                    return false;
+                }
+
+                // Limiter les noms à trop de mots (ex: "Common plantain, narrowleaf")
+                $wordCount = preg_match_all('/\S+/', $name);
+                if ($wordCount !== false && $wordCount > 4) {
+                    return false;
+                }
+
+                return true;
+            };
+
+            $prioritarySimple = array_values(array_filter($prioritary, $isSimpleName));
+            $secondarySimple = array_values(array_filter($secondary, $isSimpleName));
+
+            // 4) Construire la liste finale : d'abord les cultures prioritaires, puis le reste
+            $suggestions = array_merge(
+                array_slice($prioritarySimple, 0, 30),
+                array_slice($secondarySimple, 0, 20)
+            );
 
             // Cache pour 1 heure
             $cacheItem->set($suggestions);
