@@ -125,7 +125,7 @@ export default function Dashboard() {
       const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
       setPlants(templateData)
       setShowAllPlants(true)
-      setCurrentPage(1) 
+      setCurrentPage(1)
     } catch (err) {
       console.error('Erreur lors du chargement de toutes les plantes', err)
     } finally {
@@ -296,7 +296,7 @@ export default function Dashboard() {
       {/* BOUTON DE MENU MOBILE */}
       <Box
         sx={{
-          display: { xs: 'block', md: 'none' }, 
+          display: { xs: 'block', md: 'none' },
           position: 'fixed',
           top: 10,
           left: 10,
@@ -307,7 +307,7 @@ export default function Dashboard() {
           color="primary"
           aria-label="open drawer"
           onClick={toggleSidebarMobile}
-          sx={{ backgroundColor: 'white', boxShadow: 3 }} 
+          sx={{ backgroundColor: 'white', boxShadow: 3 }}
         >
           <MenuIcon />
         </IconButton>
@@ -485,10 +485,7 @@ export default function Dashboard() {
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
                       <Card
                         sx={{
-                          borderRadius: 3,
-                          overflow: 'hidden',
-                          boxShadow: '0 20px 30px rgba(15,23,42,0.08)',
-                          border: '1px solid #e5e7eb',
+                          ...dashboardStyles.plantCard,
                           display: 'flex',
                           flexDirection: 'column',
                           height: '100%',
@@ -496,23 +493,14 @@ export default function Dashboard() {
                       >
                         <Box
                           sx={{
+                            ...dashboardStyles.plantCardImage,
                             position: 'relative',
-                            pt: '65%',
-                            backgroundColor: '#f3f4f6',
                           }}
                         >
                           <img
                             src={getPlantImagePath(plant.imageSlug || plant.image_url)}
                             alt={plant.name}
                             loading="lazy"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
                             onError={(e) => {
                               e.currentTarget.onerror = null
                               e.currentTarget.src = DEFAULT_PLANT_IMAGE
@@ -521,21 +509,21 @@ export default function Dashboard() {
                           {madagascarPriorityList.some((keyword) =>
                             (plant.name || '').toLowerCase().includes(keyword)
                           ) && (
-                            <Chip
-                              label="Madagascar"
-                              size="small"
-                              sx={{
-                                position: 'absolute',
-                                top: 12,
-                                left: 12,
-                                backgroundColor: '#fef3c7',
-                                color: '#b45309',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                              }}
-                            />
-                          )}
+                              <Chip
+                                label="Madagascar"
+                                size="small"
+                                sx={{
+                                  position: 'absolute',
+                                  top: 12,
+                                  left: 12,
+                                  backgroundColor: '#fef3c7',
+                                  color: '#b45309',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.08em',
+                                }}
+                              />
+                            )}
                         </Box>
                         <CardContent sx={{ flexGrow: 1 }}>
                           <Stack spacing={1}>
@@ -552,34 +540,30 @@ export default function Dashboard() {
                             )}
                           </Stack>
                         </CardContent>
-                        <CardActions
-                          sx={{
-                            justifyContent: 'space-between',
-                            px: 2,
-                            pb: 2,
-                          }}
-                        >
-                          <Button
-                            sx={dashboardStyles.plantNameLink}
-                            onClick={() => handleOpenTemplateDetails(plant)}
-                            aria-label={`Voir les détails de ${plant.name}`}
-                          >
-                            Détails
-                          </Button>
-                          {!showCatalogFromTrefle && (
-                            <Chip
-                              label="Base Ravina"
-                              size="small"
-                              sx={{ backgroundColor: '#ecfccb', color: '#15803d', fontWeight: 700 }}
-                            />
-                          )}
-                          {showCatalogFromTrefle && (
-                            <Chip
-                              label="trefle.io"
-                              size="small"
-                              sx={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}
-                            />
-                          )}
+                        <CardActions sx={dashboardStyles.cardActions}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                            <Button
+                              sx={dashboardStyles.plantNameLink}
+                              onClick={() => handleOpenTemplateDetails(plant)}
+                              aria-label={`Voir les détails de ${plant.name}`}
+                            >
+                              Détails
+                            </Button>
+                            {!showCatalogFromTrefle && (
+                              <Chip
+                                label="Base Ravina"
+                                size="small"
+                                sx={{ backgroundColor: '#ecfccb', color: '#15803d', fontWeight: 700 }}
+                              />
+                            )}
+                            {showCatalogFromTrefle && (
+                              <Chip
+                                label="trefle.io"
+                                size="small"
+                                sx={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}
+                              />
+                            )}
+                          </Box>
                         </CardActions>
                       </Card>
                     </Grid>
@@ -638,7 +622,7 @@ export default function Dashboard() {
                       mt: 2,
                       p: 0,
                       display: 'grid',
-                      gap: 1,
+                      gap: 1.25,
                     }}
                   >
                     {filteredCatalog.length === 0 ? (
@@ -651,22 +635,72 @@ export default function Dashboard() {
                           component="li"
                           key={`trefle-${plant.id}`}
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
                             borderRadius: 2,
                             border: '1px solid #e2e8f0',
-                            px: 2,
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 10px 18px rgba(15,23,42,0.08)',
+                            px: 1.5,
                             py: 1.25,
-                            backgroundColor: '#fff',
-                            boxShadow: '0 1px 2px rgba(15,23,42,0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+                            cursor: 'default',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 16px 28px rgba(15,23,42,0.12)',
+                              borderColor: '#93c5fd',
+                            },
                           }}
                         >
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          <Box
+                            sx={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              backgroundColor: '#f3f4f6',
+                            }}
+                          >
+                            <img
+                              src={getPlantImagePath(plant.imageSlug)}
+                              alt={plant.name}
+                              loading="lazy"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block',
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null
+                                e.currentTarget.src = DEFAULT_PLANT_IMAGE
+                              }}
+                            />
+                          </Box>
+                          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                fontWeight: 700,
+                                mb: 0.25,
+                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                              }}
+                            >
                               {getDisplayName(plant.name)}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                              }}
+                            >
                               {plant.type} • {plant.sunExposure}
                             </Typography>
                           </Box>
@@ -679,6 +713,7 @@ export default function Dashboard() {
                               letterSpacing: '0.08em',
                               backgroundColor: '#dbeafe',
                               color: '#1d4ed8',
+                              flexShrink: 0,
                             }}
                           />
                         </Box>
