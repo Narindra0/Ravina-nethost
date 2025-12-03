@@ -614,7 +614,12 @@ export default function Dashboard() {
                             display: 'flex',
                             flexDirection: 'column',
                             height: '100%',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              boxShadow: 6,
+                            },
                           }}
+                          onClick={() => handleOpenTemplateDetails(plant)}
                         >
                           <Box
                             sx={{
@@ -652,9 +657,21 @@ export default function Dashboard() {
                           </Box>
                           <CardContent sx={{ flexGrow: 1 }}>
                             <Stack spacing={1}>
-                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenTemplateDetails(plant)
+                                }}
+                                sx={{
+                                  ...dashboardStyles.plantNameLink,
+                                  textAlign: 'left',
+                                  padding: 0,
+                                  justifyContent: 'flex-start',
+                                }}
+                                aria-label={`Voir les détails de ${plant.name}`}
+                              >
                                 {getDisplayName(plant.name)}
-                              </Typography>
+                              </Button>
                               <Typography variant="body2" color="text.secondary">
                                 {plant.type} • {plant.bestSeason || 'Toute saison'}
                               </Typography>
@@ -667,18 +684,7 @@ export default function Dashboard() {
                           </CardContent>
                           <CardActions sx={dashboardStyles.cardActions}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                              <Button
-                                sx={dashboardStyles.plantNameLink}
-                                onClick={() => handleOpenTemplateDetails(plant)}
-                                aria-label={`Voir les détails de ${plant.name}`}
-                              >
-                                Détails
-                              </Button>
-                              <Chip
-                                label="Base Ravina"
-                                size="small"
-                                sx={{ backgroundColor: '#ecfccb', color: '#15803d', fontWeight: 700 }}
-                              />
+                              <Box />
                             </Box>
                           </CardActions>
                         </Card>
