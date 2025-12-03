@@ -300,12 +300,10 @@ export default function Dashboard() {
     })
   }, [plants])
 
+  // Catalogue de base : toujours basé sur les templates Ravina
   const inventoryDataset = useMemo(() => {
-    if (showCatalogFromTrefle && suggestions?.isPremium) {
-      return suggestionList
-    }
     return prioritizedPlants
-  }, [prioritizedPlants, showCatalogFromTrefle, suggestionList, suggestions])
+  }, [prioritizedPlants])
 
   const filteredPlants = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase()
@@ -529,7 +527,7 @@ export default function Dashboard() {
                 <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
                   Inventaire & Collection
                 </Typography>
-                {filteredPlants.length >= 5 && (
+                {!showCatalogFromTrefle && filteredPlants.length >= 5 && (
                   !showAllPlants ? (
                     <Button
                       endIcon={<ArrowForward />}
@@ -585,107 +583,100 @@ export default function Dashboard() {
                 </Box>
               )}
 
-              {filteredPlants.length === 0 ? (
-                <Box sx={dashboardStyles.emptyState}>
-                  <Typography>
-                    {inventorySearch
-                      ? 'Aucune plante ne correspond à votre recherche.'
-                      : "Vous n'avez encore enregistré aucune plante."}
-                  </Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={1.5}>
-                  {paginatedPlants.map((plant) => (
-                    <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                      <Card
-                        sx={{
-                          ...dashboardStyles.plantCard,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          height: '100%',
-                        }}
-                      >
-                        <Box
+              {!showCatalogFromTrefle && (
+                filteredPlants.length === 0 ? (
+                  <Box sx={dashboardStyles.emptyState}>
+                    <Typography>
+                      {inventorySearch
+                        ? 'Aucune plante ne correspond à votre recherche.'
+                        : "Vous n'avez encore enregistré aucune plante."}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Grid container spacing={1.5}>
+                    {paginatedPlants.map((plant) => (
+                      <Grid item xs={12} sm={6} md={3} key={plant.id}>
+                        <Card
                           sx={{
-                            ...dashboardStyles.plantCardImage,
-                            position: 'relative',
+                            ...dashboardStyles.plantCard,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%',
                           }}
                         >
-                          <img
-                            src={getPlantImagePath(plant.imageSlug || plant.image_url)}
-                            alt={plant.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null
-                              e.currentTarget.src = DEFAULT_PLANT_IMAGE
+                          <Box
+                            sx={{
+                              ...dashboardStyles.plantCardImage,
+                              position: 'relative',
                             }}
-                          />
-                          {madagascarPriorityList.some((keyword) =>
-                            (plant.name || '').toLowerCase().includes(keyword)
-                          ) && (
-                              <Chip
-                                label="Madagascar"
-                                size="small"
-                                sx={{
-                                  position: 'absolute',
-                                  top: 12,
-                                  left: 12,
-                                  backgroundColor: '#fef3c7',
-                                  color: '#b45309',
-                                  fontWeight: 700,
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.08em',
-                                }}
-                              />
-                            )}
-                        </Box>
-                        <CardContent sx={{ flexGrow: 1 }}>
-                          <Stack spacing={1}>
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                              {getDisplayName(plant.name)}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {plant.type} • {plant.bestSeason || 'Toute saison'}
-                            </Typography>
-                            {plant.sunExposure && (
-                              <Typography variant="body2" color="text.secondary">
-                                ☀️ {plant.sunExposure}
+                          >
+                            <img
+                              src={getPlantImagePath(plant.imageSlug || plant.image_url)}
+                              alt={plant.name}
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null
+                                e.currentTarget.src = DEFAULT_PLANT_IMAGE
+                              }}
+                            />
+                            {madagascarPriorityList.some((keyword) =>
+                              (plant.name || '').toLowerCase().includes(keyword)
+                            ) && (
+                                <Chip
+                                  label="Madagascar"
+                                  size="small"
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 12,
+                                    left: 12,
+                                    backgroundColor: '#fef3c7',
+                                    color: '#b45309',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em',
+                                  }}
+                                />
+                              )}
+                          </Box>
+                          <CardContent sx={{ flexGrow: 1 }}>
+                            <Stack spacing={1}>
+                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                {getDisplayName(plant.name)}
                               </Typography>
-                            )}
-                          </Stack>
-                        </CardContent>
-                        <CardActions sx={dashboardStyles.cardActions}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                            <Button
-                              sx={dashboardStyles.plantNameLink}
-                              onClick={() => handleOpenTemplateDetails(plant)}
-                              aria-label={`Voir les détails de ${plant.name}`}
-                            >
-                              Détails
-                            </Button>
-                            {!showCatalogFromTrefle && (
+                              <Typography variant="body2" color="text.secondary">
+                                {plant.type} • {plant.bestSeason || 'Toute saison'}
+                              </Typography>
+                              {plant.sunExposure && (
+                                <Typography variant="body2" color="text.secondary">
+                                  ☀️ {plant.sunExposure}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </CardContent>
+                          <CardActions sx={dashboardStyles.cardActions}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                              <Button
+                                sx={dashboardStyles.plantNameLink}
+                                onClick={() => handleOpenTemplateDetails(plant)}
+                                aria-label={`Voir les détails de ${plant.name}`}
+                              >
+                                Détails
+                              </Button>
                               <Chip
                                 label="Base Ravina"
                                 size="small"
                                 sx={{ backgroundColor: '#ecfccb', color: '#15803d', fontWeight: 700 }}
                               />
-                            )}
-                            {showCatalogFromTrefle && (
-                              <Chip
-                                label="trefle.io"
-                                size="small"
-                                sx={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}
-                              />
-                            )}
-                          </Box>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
+                            </Box>
+                          </CardActions>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )
               )}
 
-              {suggestions?.isPremium && !showCatalogFromTrefle && (
+              {suggestions?.isPremium && showCatalogFromTrefle && (
                 <Box
                   sx={{
                     mt: 3,
@@ -871,7 +862,7 @@ export default function Dashboard() {
               )}
 
               <Box sx={dashboardStyles.addButtonContainer}>
-                {showAllPlants && filteredPlants.length > itemsPerPage && (
+                {!showCatalogFromTrefle && showAllPlants && filteredPlants.length > itemsPerPage && (
                   <Button
                     variant="outlined"
                     startIcon={<ArrowBack />}
@@ -905,7 +896,7 @@ export default function Dashboard() {
                 >
                   {!isMobile && 'Ajouter une nouvelle plante'}
                 </Button>
-                {showAllPlants && filteredPlants.length > itemsPerPage && (
+                {!showCatalogFromTrefle && showAllPlants && filteredPlants.length > itemsPerPage && (
                   <Button
                     variant="outlined"
                     endIcon={<ArrowForward />}
@@ -931,7 +922,7 @@ export default function Dashboard() {
                   </Button>
                 )}
               </Box>
-              {showAllPlants && plants.length > itemsPerPage && (
+              {!showCatalogFromTrefle && showAllPlants && plants.length > itemsPerPage && (
                 <Box sx={{ textAlign: 'center', mt: 2 }}>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
                     Page {currentPage} sur {Math.max(1, Math.ceil(filteredPlants.length / itemsPerPage))}
