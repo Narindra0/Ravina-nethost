@@ -159,9 +159,59 @@ export default function Dashboard() {
 
   const suggestionList = useMemo(() => suggestions?.suggestions ?? [], [suggestions])
 
+  const madagascarPriorityList = [
+    // Fruits tropicaux & malgaches
+    'vanille',
+    'litchi',
+    'lichi',
+    'mangue',
+    'banane',
+    'ananas',
+    'papaye',
+    'kaki',
+    'orange',
+    'citron',
+    'pomme',
+    'poire',
+    'raisin',
+    'fraise',
+    // Cultures de base
+    'riz',
+    'café',
+    'cacao',
+    'girofle',
+    'ylang',
+    // Légumes courants
+    'tomate',
+    'carotte',
+    'salade',
+    'laitue',
+    'oignon',
+    'ail',
+    'piment',
+    'courgette',
+    'chou',
+    'patate douce',
+    'pomme de terre',
+    'manioc',
+  ]
+
   const curatedSuggestions = useMemo(() => {
     if (suggestionList.length === 0) {
       return []
+    }
+
+    // Pour les utilisateurs premium (Trefle.io), on privilégie les cultures pertinentes pour Madagascar
+    let workingList = suggestionList
+    if (suggestions?.isPremium) {
+      const filteredForMadagascar = suggestionList.filter((plant) =>
+        madagascarPriorityList.some((keyword) =>
+          (plant.name || '').toLowerCase().includes(keyword)
+        )
+      )
+      if (filteredForMadagascar.length > 0) {
+        workingList = filteredForMadagascar
+      }
     }
 
     const categories = {
@@ -171,7 +221,7 @@ export default function Dashboard() {
       Rosier: [],
     }
 
-    suggestionList.forEach((plant) => {
+    workingList.forEach((plant) => {
       const type = (plant.type || '').toLowerCase()
       if (type.includes('herbe') || type.includes('aromatique')) {
         categories.Herbe.push(plant)
@@ -195,14 +245,12 @@ export default function Dashboard() {
 
     const filled = selection.filter(Boolean)
     if (filled.length < 8) {
-      const fallback = suggestionList.filter((plant) => !filled.includes(plant))
+      const fallback = workingList.filter((plant) => !filled.includes(plant))
       filled.push(...fallback.slice(0, 8 - filled.length))
     }
 
     return filled.slice(0, 8)
-  }, [suggestionList])
-
-  const madagascarPriorityList = ['vanille', 'litchi', 'riz', 'café', 'cacao', 'girofle', 'ylang', 'mangue', 'banane']
+  }, [suggestionList, suggestions])
 
   const prioritizedPlants = useMemo(() => {
     return [...plants].sort((a, b) => {
@@ -432,53 +480,61 @@ export default function Dashboard() {
                 <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
                   Inventaire & Collection
                 </Typography>
-                {!showAllPlants && filteredPlants.length >= 5 && (
-                  <Button
-                    endIcon={<ArrowForward />}
-                    sx={dashboardStyles.viewAllButton}
-                    onClick={handleViewAll}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? 'Chargement…' : 'Voir toutes'}
-                  </Button>
+                {filteredPlants.length >= 5 && (
+                  !showAllPlants ? (
+                    <Button
+                      endIcon={<ArrowForward />}
+                      sx={dashboardStyles.viewAllButton}
+                      onClick={handleViewAll}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? 'Chargement…' : 'Voir toutes'}
+                    </Button>
+                  ) : (
+                    <TextField
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                      size="small"
+                      placeholder="Rechercher dans votre inventaire"
+                      sx={{ width: { xs: 180, sm: 260, md: 320 } }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )
                 )}
               </Box>
 
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 2 }}>
-                <TextField
-                  value={inventorySearch}
-                  onChange={(e) => setInventorySearch(e.target.value)}
-                  size="small"
-                  placeholder="Rechercher dans votre inventaire"
-                  sx={{ flex: { xs: '1 1 100%', md: '1 1 320px' } }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                {suggestions?.isPremium && (
+              {suggestions?.isPremium && (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                   <Tooltip
                     title={
                       showCatalogFromTrefle
-                        ? 'Afficher vos variétés enregistrées'
-                        : 'Explorer le catalogue Trefle.io'
+                        ? 'Afficher uniquement votre inventaire'
+                        : 'Basculer vers le catalogue RAVINA+'
                     }
                   >
-                    <Button
-                      variant={showCatalogFromTrefle ? 'contained' : 'outlined'}
+                    <IconButton
                       color="secondary"
-                      startIcon={showCatalogFromTrefle ? <RotateLeft /> : <Shuffle />}
                       onClick={() => setShowCatalogFromTrefle((prev) => !prev)}
-                      sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                      sx={{
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: '#ffffff',
+                        '&:hover': {
+                          backgroundColor: '#eff6ff',
+                        },
+                      }}
+                      aria-label={showCatalogFromTrefle ? 'Voir inventaire' : 'Voir catalogue premium'}
                     >
-                      {showCatalogFromTrefle ? 'Voir mon inventaire' : 'Voir catalogue Trefle'}
-                    </Button>
+                      {showCatalogFromTrefle ? <RotateLeft /> : <Shuffle />}
+                    </IconButton>
                   </Tooltip>
-                )}
-              </Box>
+                </Box>
+              )}
 
               {filteredPlants.length === 0 ? (
                 <Box sx={dashboardStyles.emptyState}>
@@ -601,17 +657,14 @@ export default function Dashboard() {
                   >
                     <Box>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        Catalogue premium Trefle.io
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Un aperçu rapide des variétés botaniques disponibles pour vos futures collections.
+                        Catalogue RAVINA+
                       </Typography>
                     </Box>
                     <TextField
                       value={catalogSearch}
                       onChange={(e) => setCatalogSearch(e.target.value)}
                       size="small"
-                      placeholder="Filtrer le catalogue premium"
+                      placeholder="Rechercher un fruit ou légume (litchi, banane, kaki...)"
                       sx={{ width: { xs: '100%', sm: 280 } }}
                       InputProps={{
                         startAdornment: (
