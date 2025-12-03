@@ -14,7 +14,7 @@ import {
   Divider,
 } from '@mui/material'
 import { Star, Redeem, CheckCircle } from '@mui/icons-material'
-import axios from '../../lib/axios'
+import { api as axios } from '../../lib/axios'
 
 const AccountModal = ({ open, onClose, user }) => {
   const [status, setStatus] = useState('FREE')
@@ -35,7 +35,7 @@ const AccountModal = ({ open, onClose, user }) => {
   const fetchAccountStatus = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('/api/account/status')
+      const response = await api.get('/api/account/status')
       setStatus(response.data.status)
       setExpiryDate(response.data.expiryDate)
       setLoading(false)
@@ -56,7 +56,7 @@ const AccountModal = ({ open, onClose, user }) => {
       setError('')
       setSuccess('')
 
-      const response = await axios.post('/api/account/activate', {
+      const response = await api.post('/api/account/activate', {
         code: activationCode.trim(),
       })
 
@@ -66,7 +66,7 @@ const AccountModal = ({ open, onClose, user }) => {
         setExpiryDate(response.data.expiryDate)
         setActivationCode('')
         setShowCodeInput(false)
-        
+
         // Recharger la page après 2 secondes pour mettre à jour le UI
         setTimeout(() => {
           window.location.reload()
@@ -76,7 +76,7 @@ const AccountModal = ({ open, onClose, user }) => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          'Erreur lors de l\'activation du code'
+        'Erreur lors de l\'activation du code'
       )
       setLoading(false)
     }
