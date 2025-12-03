@@ -14,7 +14,7 @@ import {
   Divider,
 } from '@mui/material'
 import { Star, Redeem, CheckCircle } from '@mui/icons-material'
-import axios from '../lib/axios'
+import axios from '../../lib/axios'
 
 const AccountModal = ({ open, onClose, user }) => {
   const [status, setStatus] = useState('FREE')
