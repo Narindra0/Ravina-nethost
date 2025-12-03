@@ -22,6 +22,7 @@ class NotificationFormatter
             NotificationType::ARROSAGE_RAPPEL => $this->formatArrosageRappel($context),
             NotificationType::ARROSAGE_OUBLIE => $this->formatArrosageOublie($context),
             NotificationType::PLANTATION_RETARD => $this->formatPlantationRetard($context),
+            NotificationType::PLANTATION_SUPPRIMEE => $this->formatPlantationSupprimee($context),
             NotificationType::RECOLTE_PROCHE => $this->formatRecolteProche($context),
             NotificationType::FERTILISATION_RECOMMANDEE => $this->formatFertilisationRecommandee($context),
             NotificationType::ALERTE_METEO => $this->formatAlerteMeteo($context),
@@ -105,15 +106,27 @@ class NotificationFormatter
     {
         $plant = $this->formatSinglePlantName($context);
         $delayDays = max(1, (int) ($context['delay_days'] ?? 1));
+        $isFinalWarning = (bool) ($context['final_warning'] ?? false);
+
+        if ($isFinalWarning) {
+            return [
+                'title' => 'Dernier avertissement avant suppression',
+                'message' => sprintf(
+                    "Votre plantation %s est en attente depuis %d jour%s. Sans confirmation d'ici demain, elle sera supprimée automatiquement.",
+                    $plant,
+                    $delayDays,
+                    $delayDays > 1 ? 's' : ''
+                ),
+            ];
+        }
 
         return [
-            'title' => 'Enregistrement tardif',
+            'title' => 'Plantation en retard',
             'message' => sprintf(
-                "Vous avez enregistré la plantation de %s avec %d jour%s de retard par rapport à la date de plantation effective.%s",
+                "Aucune action enregistrée sur %s depuis %d jour%s. Confirmez-la pour lancer le suivi et éviter sa suppression.",
                 $plant,
                 $delayDays,
-                $delayDays > 1 ? 's' : '',
-                PHP_EOL . "Afin d'assurer un suivi précis de vos cultures, nous vous recommandons d'enregistrer vos plantations dès qu'elles sont effectuées."
+                $delayDays > 1 ? 's' : ''
             ),
         ];
     }
@@ -162,6 +175,22 @@ class NotificationFormatter
         return [
             'title' => 'Alerte météo',
             'message' => $message,
+        ];
+    }
+
+    private function formatPlantationSupprimee(array $context): array
+    {
+        $plant = $this->formatSinglePlantName($context);
+        $delayDays = max(11, (int) ($context['delay_days'] ?? 11));
+
+        return [
+            'title' => sprintf('Plantation %s supprimée', $plant),
+            'message' => sprintf(
+                "Faute d'action depuis %d jour%s, la plantation %s a été supprimée automatiquement. Vous pouvez la recréer à tout moment.",
+                $delayDays,
+                $delayDays > 1 ? 's' : '',
+                $plant
+            ),
         ];
     }
 

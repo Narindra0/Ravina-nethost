@@ -57,6 +57,9 @@ class WaterPlantationController extends AbstractController
             'watering_notes' => array_merge(['Arrosage manuel effectué'], $watering['notes'] ?? []),
             'manual' => true,
             'frequency_days' => $watering['frequency_days'] ?? null,
+            'last_watered_at' => $watering['last_watered_at'] instanceof \DateTimeInterface
+                ? $watering['last_watered_at']->format(\DateTimeInterface::ATOM)
+                : (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ];
 
         if (!empty($watering['auto_validation'])) {

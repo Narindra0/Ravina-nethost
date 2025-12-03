@@ -17,18 +17,17 @@ class WateringService
         $baseQuantity = (float) ($template?->getWateringQuantityMl() ?? 500);
         $frequencyDays = $this->resolveFrequencyDays((string) $template?->getWateringFrequency());
 
+        $todayDate = new \DateTimeImmutable('today');
+        $lastWateredAt = $this->resolveLastWateredAt($plantation, $lastSnapshot);
+        $referenceDate = $lastWateredAt;
+
         if ($isManualWatering) {
-            $referenceDate = new \DateTimeImmutable('today');
-        } else {
-            $referenceDate = $lastSnapshot?->getArrosageRecoDate()
-                ?? $plantation->getDatePlantation()
-                ?? new \DateTimeImmutable('today');
+            $referenceDate = $todayDate;
+            $lastWateredAt = $todayDate;
         }
 
-        $referenceDate = $this->toImmutable($referenceDate);
         $frequencyInterval = new \DateInterval(sprintf('P%dD', max(1, $frequencyDays)));
 
-        $todayDate = new \DateTimeImmutable('today');
         $nextDate = $referenceDate->add($frequencyInterval);
         $quantity = $baseQuantity;
         $decisions = [];
@@ -71,6 +70,7 @@ class WateringService
 
                 // Réinitialiser le cycle à partir d'aujourd'hui
                 $referenceDate = $todayDate;
+                $lastWateredAt = $todayDate;
                 $nextDate = $referenceDate->add($frequencyInterval);
                 $daysUntilNext = $this->diffInDays($todayDate, $nextDate);
             }
@@ -214,10 +214,6 @@ class WateringService
             $decisions[] = 'Conseil chaleur : ' . $message;
         }
 
-        while ($nextDate <= $todayDate) {
-            $nextDate = $nextDate->add($frequencyInterval);
-        }
-
         $quantity = round($quantity, 2);
 
         return [
@@ -228,6 +224,7 @@ class WateringService
             'auto_validation' => $autoValidation,
             'temperature_advice' => $temperatureAdvice,
             'cards' => $cards,
+            'last_watered_at' => $lastWateredAt,
         ];
     }
 
@@ -295,9 +292,39 @@ class WateringService
     private function diffInDays(\DateTimeImmutable $from, \DateTimeImmutable $to): int
     {
         $interval = $from->diff($to);
-        $days = (int) $interval->format('%r%a');
 
-        return $days < 0 ? 0 : $days;
+        return (int) $interval->format('%r%a');
+    }
+
+    private function resolveLastWateredAt(UserPlantation $plantation, ?SuiviSnapshot $lastSnapshot): \DateTimeImmutable
+    {
+        $decisionDetails = $lastSnapshot?->getDecisionDetailsJson();
+        $raw = is_array($decisionDetails) ? ($decisionDetails['last_watered_at'] ?? null) : null;
+
+        if ($raw instanceof \DateTimeInterface) {
+            return $this->toImmutable($raw);
+        }
+
+        if (is_string($raw) && trim($raw) !== '') {
+            try {
+                return new \DateTimeImmutable($raw);
+            } catch (\Throwable) {
+                // fallback handled below
+            }
+        }
+
+        if (is_array($decisionDetails) && ($decisionDetails['manual'] ?? false)) {
+            $manualDate = $lastSnapshot?->getDateSnapshot();
+            if ($manualDate instanceof \DateTimeInterface) {
+                return $this->toImmutable($manualDate);
+            }
+        }
+
+        $fallback = $plantation->getConfirmationPlantation()
+            ?? $plantation->getDatePlantation()
+            ?? new \DateTimeImmutable('today');
+
+        return $this->toImmutable($fallback);
     }
 }
 

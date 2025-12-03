@@ -82,6 +82,9 @@ class ProcessPlantationsCommand extends Command
                 'lifecycle' => $lifecycle['details'] ?? [],
                 'watering_notes' => $watering['notes'] ?? [],
                 'frequency_days' => $watering['frequency_days'] ?? null,
+                'last_watered_at' => $watering['last_watered_at'] instanceof \DateTimeInterface
+                    ? $watering['last_watered_at']->format(\DateTimeInterface::ATOM)
+                    : null,
             ]);
             $snapshot->setMeteoDataJson([
                 'daily' => $meteo['daily'] ?? [],

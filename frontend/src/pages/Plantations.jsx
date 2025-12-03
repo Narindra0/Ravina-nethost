@@ -104,7 +104,7 @@ export default function Plantations() {
     const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const t1 = new Date(target.getFullYear(), target.getMonth(), target.getDate());
     const diffMs = t1 - t0;
-    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   };
 
   const isPlantationFuture = (datePlantation) => {
@@ -345,6 +345,10 @@ export default function Plantations() {
                                 const d = daysUntil(snapshot.arrosageRecoDate);
                                 if (d === null || Number.isNaN(d)) {
                                   return 'Date d’arrosage à venir';
+                                }
+                                if (d < 0) {
+                                  const overdue = Math.abs(d);
+                                  return `⚠️ Arrosage en retard de ${overdue} jour${overdue > 1 ? 's' : ''}`;
                                 }
                                 if (d === 0) {
                                   return "Aujourd'hui";

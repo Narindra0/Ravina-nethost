@@ -35,7 +35,7 @@ const daysUntil = (dateString) => {
   const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const t1 = new Date(target.getFullYear(), target.getMonth(), target.getDate())
   const diffMs = t1 - t0
-  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 }
 
 const mapCardSeverity = (severity) => {
@@ -289,17 +289,26 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
                 <Box>
                   <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
                     {(() => {
-                      const daysText = d === 0 ? "aujourd'hui" : d === 1 ? "1 jour" : `${d} jours`;
+                      if (d === null) {
+                        return "Aucune recommandation d'arrosage disponible pour l'instant."
+                      }
+
                       const dateText = new Date(snapshot.arrosageRecoDate).toLocaleDateString('fr-FR', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
-                      });
-                      const quantityLiters = (parseFloat(snapshot.arrosageRecoQuantiteMl || 0) / 1000).toFixed(1);
-                      const literText = parseFloat(quantityLiters) > 1 ? 'litres' : 'litre';
+                      })
+                      const quantityLiters = (parseFloat(snapshot.arrosageRecoQuantiteMl || 0) / 1000).toFixed(1)
+                      const literText = parseFloat(quantityLiters) > 1 ? 'litres' : 'litre'
 
-                      return `Le prochain arrosage est prévu dans ${daysText}, soit le ${dateText}, et nécessitera une quantité de ${quantityLiters} ${literText} d'eau.`;
+                      if (d < 0) {
+                        const overdue = Math.abs(d)
+                        return `⚠️ Arrosage en retard de ${overdue} jour${overdue > 1 ? 's' : ''}. Il était attendu le ${dateText}. Prévoyez ${quantityLiters} ${literText} d'eau dès maintenant.`
+                      }
+
+                      const daysText = d === 0 ? "aujourd'hui" : d === 1 ? "1 jour" : `${d} jours`
+                      return `Le prochain arrosage est prévu dans ${daysText} (le ${dateText}) avec ${quantityLiters} ${literText} d'eau.`
                     })()}
                   </Typography>
                 </Box>

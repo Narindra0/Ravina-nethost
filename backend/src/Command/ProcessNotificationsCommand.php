@@ -12,6 +12,7 @@ use App\Service\NotificationService;
 use App\Service\WateringService;
 use DateInterval;
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -27,6 +28,7 @@ class ProcessNotificationsCommand extends Command
     private const RAIN_THRESHOLD_MM = 5.0;
     private const REMINDER_HOUR = 17;
     private const OVERDUE_HOURS = 48;
+    private const PLANNED_REMINDER_OFFSETS = [1, 4, 7, 10];
 
     /**
      * @var array<string, array<string, mixed>>
@@ -40,6 +42,7 @@ class ProcessNotificationsCommand extends Command
         private readonly WateringService $wateringService,
         private readonly NotificationService $notificationService,
         private readonly NotificationRepository $notificationRepository,
+        private readonly EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
@@ -477,13 +480,7 @@ class ProcessNotificationsCommand extends Command
             return;
         }
 
-        // Send notification at J+2, J+5, J+8, J+11 (every 3 days starting from J+2)
-        // J+2: delayDays = 2
-        // J+5: delayDays = 5
-        // J+8: delayDays = 8
-        // J+11: delayDays = 11
-        // Pattern: delayDays = 2, 5, 8, 11 => (delayDays - 2) % 3 == 0
-        if (($delayDays - 2) % 3 !== 0) {
+        if (!in_array($delayDays, self::PLANNED_REMINDER_OFFSETS, true)) {
             return;
         }
 
@@ -492,17 +489,25 @@ class ProcessNotificationsCommand extends Command
             return;
         }
 
+        $isFinalWarning = $delayDays === 10;
+
         $this->notificationService->createNotification(
             $plantation->getUser(),
             NotificationType::PLANTATION_RETARD,
             [
                 'plant_name' => $plantName,
                 'delay_days' => $delayDays,
+                'final_warning' => $isFinalWarning,
             ],
             $plantation
         );
 
-        $io->text(sprintf('⚠️ Notification plantation en retard (J+%d) pour plantation #%d.', $delayDays, $plantation->getId()));
+        $io->text(sprintf(
+            '⚠️ Notification plantation en retard (J+%d%s) pour plantation #%d.',
+            $delayDays,
+            $isFinalWarning ? ' - dernier avertissement' : '',
+            $plantation->getId()
+        ));
     }
 
     private function handlePlantationAutoDelete(
@@ -523,14 +528,28 @@ class ProcessNotificationsCommand extends Command
         $plannedImmutable = DateTimeImmutable::createFromInterface($plannedDate);
         $delayDays = (int) $plannedImmutable->diff($today)->format('%r%a');
 
-        // Auto-delete after 13 days without confirmation
-        if ($delayDays >= 13) {
+        // Auto-delete after 11 days without confirmation
+        if ($delayDays >= 11) {
             $plantationId = $plantation->getId();
             $plantName = $plantation->getPlantTemplate()?->getName() ?? 'plante inconnue';
-            
+            $user = $plantation->getUser();
+
+            if ($user !== null) {
+                $this->notificationService->createNotification(
+                    $user,
+                    NotificationType::PLANTATION_SUPPRIMEE,
+                    [
+                        'plant_name' => $plantName,
+                        'delay_days' => $delayDays,
+                    ],
+                    $plantation,
+                    false
+                );
+            }
+
             $this->entityManager->remove($plantation);
             $this->entityManager->flush();
-            
+
             $io->text(sprintf('🗑️ Plantation #%d (%s) supprimée automatiquement après %d jours sans confirmation.', $plantationId, $plantName, $delayDays));
         }
     }

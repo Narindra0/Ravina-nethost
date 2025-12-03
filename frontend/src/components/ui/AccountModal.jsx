@@ -11,37 +11,61 @@ import {
   Box,
   Chip,
   CircularProgress,
-  Divider,
 } from '@mui/material'
 import { Star, Redeem, CheckCircle } from '@mui/icons-material'
-import { api as axios } from '../../lib/axios'
+import { api } from '../../lib/axios'
 
-const AccountModal = ({ open, onClose, user }) => {
+const premiumBenefits = [
+  {
+    title: 'Conseils météo en continu',
+    description: 'Recalcule des arrosages après chaque pluie validée.',
+  },
+  {
+    title: 'Alertes critiques instantanées',
+    description: 'Retards, suppressions et dangers météo signalés en priorité.',
+  },
+  {
+    title: 'Données botaniques Trefle.io',
+    description: 'Fiches enrichies pour chaque plante et cycle complet.',
+  },
+]
+
+const freeLimitations = [
+  '1 seul recalcul météo par jour',
+  'Pas de sauvegarde Premium après J+10',
+  'Pas d’alertes avancées en cas de suppression',
+]
+
+const AccountModal = ({ open, onClose }) => {
   const [status, setStatus] = useState('FREE')
   const [expiryDate, setExpiryDate] = useState(null)
   const [activationCode, setActivationCode] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showCodeInput, setShowCodeInput] = useState(false)
 
-  // Charger le statut du compte à l'ouverture de la modal
   useEffect(() => {
     if (open) {
       fetchAccountStatus()
     }
   }, [open])
 
-  const fetchAccountStatus = async () => {
+  const fetchAccountStatus = async (showSpinner = true) => {
     try {
-      setLoading(true)
+      if (showSpinner) {
+        setStatusLoading(true)
+      }
       const response = await api.get('/api/account/status')
       setStatus(response.data.status)
       setExpiryDate(response.data.expiryDate)
-      setLoading(false)
     } catch (err) {
       console.error('Erreur lors de la récupération du statut:', err)
-      setLoading(false)
+    } finally {
+      if (showSpinner) {
+        setStatusLoading(false)
+      }
     }
   }
 
@@ -52,7 +76,7 @@ const AccountModal = ({ open, onClose, user }) => {
     }
 
     try {
-      setLoading(true)
+      setActionLoading(true)
       setError('')
       setSuccess('')
 
@@ -61,24 +85,18 @@ const AccountModal = ({ open, onClose, user }) => {
       })
 
       if (response.data.success) {
-        setSuccess(response.data.message)
-        setStatus('PREMIUM')
-        setExpiryDate(response.data.expiryDate)
+        setSuccess(response.data.message || 'Code activé avec succès.')
         setActivationCode('')
         setShowCodeInput(false)
-
-        // Recharger la page après 2 secondes pour mettre à jour le UI
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
+        await fetchAccountStatus(false)
       }
-      setLoading(false)
     } catch (err) {
       setError(
         err.response?.data?.message ||
         'Erreur lors de l\'activation du code'
       )
-      setLoading(false)
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -102,153 +120,193 @@ const AccountModal = ({ open, onClose, user }) => {
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }
 
+  const heroGradient = isPremium
+    ? 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%)'
+    : 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)'
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle
-        sx={{
-          background: isPremium
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-        }}
-      >
-        {isPremium ? <Star /> : <Redeem />}
+      <DialogTitle sx={{ fontWeight: 700, fontSize: '1.25rem' }}>
         Mon Compte
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3 }}>
-        {loading && !status ? (
+      <DialogContent sx={{ pt: 1.5 }}>
+        {statusLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
         ) : (
           <>
-            {/* Affichage du statut actuel */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Statut actuel
-              </Typography>
+            <Box
+              sx={{
+                background: heroGradient,
+                color: '#fff',
+                borderRadius: 3,
+                p: 3,
+                mb: 3,
+                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)',
+              }}
+            >
               <Chip
-                label={isPremium ? 'Premium' : 'Gratuit'}
-                color={isPremium ? 'secondary' : 'default'}
-                icon={isPremium ? <CheckCircle /> : null}
+                icon={isPremium ? <CheckCircle /> : <Redeem />}
+                label={isPremium ? 'Premium actif' : 'Compte gratuit'}
                 sx={{
-                  fontSize: '1rem',
-                  py: 2.5,
-                  px: 1,
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
                   fontWeight: 700,
+                  mb: 1.5,
+                  '& .MuiChip-icon': { color: '#fff' },
                 }}
               />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                {isPremium
+                  ? 'Merci de soutenir Ravina 🌿'
+                  : 'Libérez tout le potentiel de vos plantations'}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                {isPremium && expiryDate
+                  ? `Accès garanti jusqu’au ${formatExpiryDate(expiryDate)} (${getDaysRemaining(expiryDate)} jour${getDaysRemaining(expiryDate) > 1 ? 's' : ''} restants).`
+                  : 'Activez Premium pour débloquer les alertes pro et les données météo enrichies.'}
+              </Typography>
             </Box>
 
-            {isPremium && expiryDate && (
-              <Alert severity="success" sx={{ mb: 3 }}>
-                <Typography variant="body2">
-                  Votre accès Premium expire le{' '}
-                  <strong>{formatExpiryDate(expiryDate)}</strong>
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {getDaysRemaining(expiryDate)} jour(s) restant(s)
-                </Typography>
-              </Alert>
-            )}
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Section d'activation du code */}
-            {!showCodeInput && !isPremium && (
-              <Box sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="body1" gutterBottom>
-                  Passez à Premium pour accéder à des données botaniques
-                  enrichies via Trefle.io
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<Star />}
-                  onClick={() => setShowCodeInput(true)}
-                  sx={{ mt: 2 }}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+                mb: 3,
+              }}
+            >
+              {premiumBenefits.map((benefit) => (
+                <Box
+                  key={benefit.title}
+                  sx={{
+                    borderRadius: 3,
+                    border: '1px solid #e5e7eb',
+                    p: 2,
+                    backgroundColor: '#fff',
+                    minHeight: 140,
+                  }}
                 >
-                  Activer Premium
-                </Button>
-              </Box>
-            )}
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {benefit.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {benefit.description}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
 
-            {!showCodeInput && isPremium && (
-              <Box sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Vous avez un nouveau code ? Prolongez votre accès Premium
+            {!isPremium && (
+              <Box
+                sx={{
+                  borderRadius: 3,
+                  border: '1px dashed #fca5a5',
+                  p: 2.5,
+                  mb: 3,
+                  backgroundColor: '#fff7ed',
+                }}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                  Limitations actuelles (compte gratuit)
                 </Typography>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => setShowCodeInput(true)}
-                  sx={{ mt: 2 }}
-                >
-                  Prolonger l'accès
-                </Button>
-              </Box>
-            )}
-
-            {showCodeInput && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Code d'activation
-                </Typography>
-                <TextField
-                  fullWidth
-                  placeholder="Ex: RAVINA2025"
-                  value={activationCode}
-                  onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
-                  disabled={loading}
-                  sx={{ mb: 2 }}
-                />
-
-                {error && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                  </Alert>
-                )}
-
-                {success && (
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    {success}
-                  </Alert>
-                )}
-
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setShowCodeInput(false)
-                      setActivationCode('')
-                      setError('')
-                    }}
-                    disabled={loading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleActivateCode}
-                    disabled={loading || !activationCode.trim()}
-                    fullWidth
-                  >
-                    {loading ? 'Activation...' : 'Activer'}
-                  </Button>
+                <Box component="ul" sx={{ pl: 3, m: 0 }}>
+                  {freeLimitations.map((item) => (
+                    <Typography component="li" variant="body2" key={item}>
+                      {item}
+                    </Typography>
+                  ))}
                 </Box>
               </Box>
             )}
+
+            <Box
+              sx={{
+                borderRadius: 3,
+                border: '1px solid #e2e8f0',
+                p: 3,
+                backgroundColor: '#f8fafc',
+                mb: 2,
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                {isPremium ? 'Prolonger Premium' : 'Activer un code Premium'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {isPremium
+                  ? 'Vous avez reçu un nouveau code ? Ajoutez-le pour prolonger votre accès sans interruption.'
+                  : 'Déjà un code Premium en poche ? Entrez-le ci-dessous pour débloquer les fonctionnalités avancées.'}
+              </Typography>
+
+              {showCodeInput ? (
+                <>
+                  <TextField
+                    fullWidth
+                    placeholder="Ex : RAVINA2025"
+                    value={activationCode}
+                    onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                    disabled={actionLoading}
+                    sx={{ mb: 2 }}
+                  />
+
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 1.5 }}>
+                      {error}
+                    </Alert>
+                  )}
+                  {success && (
+                    <Alert severity="success" sx={{ mb: 1.5 }}>
+                      {success}
+                    </Alert>
+                  )}
+
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setShowCodeInput(false)
+                        setActivationCode('')
+                        setError('')
+                        setSuccess('')
+                      }}
+                      disabled={actionLoading}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      onClick={handleActivateCode}
+                      disabled={actionLoading || !activationCode.trim()}
+                      fullWidth
+                    >
+                      {actionLoading ? 'Activation…' : 'Valider le code'}
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Button
+                  variant={isPremium ? 'outlined' : 'contained'}
+                  color="secondary"
+                  startIcon={<Star />}
+                  onClick={() => {
+                    setShowCodeInput(true)
+                    setError('')
+                    setSuccess('')
+                  }}
+                >
+                  {isPremium ? 'Ajouter un code' : 'Activer Premium'}
+                </Button>
+              )}
+            </Box>
           </>
         )}
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={onClose} disabled={actionLoading}>
           Fermer
         </Button>
       </DialogActions>
