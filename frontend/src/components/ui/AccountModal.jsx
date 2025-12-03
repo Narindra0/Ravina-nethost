@@ -57,7 +57,7 @@ const AccountModal = ({ open, onClose }) => {
       if (showSpinner) {
         setStatusLoading(true)
       }
-      const response = await api.get('/api/account/status')
+      const response = await api.get('/account/status')
       setStatus(response.data.status)
       setExpiryDate(response.data.expiryDate)
     } catch (err) {
@@ -80,7 +80,7 @@ const AccountModal = ({ open, onClose }) => {
       setError('')
       setSuccess('')
 
-      const response = await api.post('/api/account/activate', {
+      const response = await api.post('/account/activate', {
         code: activationCode.trim(),
       })
 
@@ -142,9 +142,10 @@ const AccountModal = ({ open, onClose }) => {
                 background: heroGradient,
                 color: '#fff',
                 borderRadius: 3,
-                p: 3,
+                p: { xs: 2.5, sm: 3.5 },
                 mb: 3,
                 boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)',
+                textAlign: { xs: 'center', sm: 'left' },
               }}
             >
               <Chip
@@ -156,14 +157,32 @@ const AccountModal = ({ open, onClose }) => {
                   fontWeight: 700,
                   mb: 1.5,
                   '& .MuiChip-icon': { color: '#fff' },
+                  alignSelf: { xs: 'center', sm: 'flex-start' },
                 }}
               />
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 800,
+                  mb: 0.5,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontSize: { xs: '1.1rem', sm: '1.4rem' },
+                }}
+              >
                 {isPremium
                   ? 'Merci de soutenir Ravina 🌿'
-                  : 'Libérez tout le potentiel de vos plantations'}
+                  : 'Libérez toutes le potentiels de RAVINA'}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {!isPremium && (
+                <Typography
+                  variant="subtitle2"
+                  sx={{ fontStyle: 'italic', opacity: 0.8, mb: 1 }}
+                >
+                  Une expérience premium, pensée pour les jardiniers exigeants.
+                </Typography>
+              )}
+              <Typography variant="body2" sx={{ opacity: 0.9, lineHeight: 1.6 }}>
                 {isPremium && expiryDate
                   ? `Accès garanti jusqu’au ${formatExpiryDate(expiryDate)} (${getDaysRemaining(expiryDate)} jour${getDaysRemaining(expiryDate) > 1 ? 's' : ''} restants).`
                   : 'Activez Premium pour débloquer les alertes pro et les données météo enrichies.'}
@@ -173,8 +192,8 @@ const AccountModal = ({ open, onClose }) => {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 2,
+                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                gap: { xs: 1.5, sm: 2 },
                 mb: 3,
               }}
             >
@@ -184,9 +203,10 @@ const AccountModal = ({ open, onClose }) => {
                   sx={{
                     borderRadius: 3,
                     border: '1px solid #e5e7eb',
-                    p: 2,
+                    p: { xs: 2, sm: 2.5 },
                     backgroundColor: '#fff',
-                    minHeight: 140,
+                    minHeight: { xs: 120, sm: 140 },
+                    textAlign: { xs: 'center', sm: 'left' },
                   }}
                 >
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -262,7 +282,13 @@ const AccountModal = ({ open, onClose }) => {
                     </Alert>
                   )}
 
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                  }}
+                >
                     <Button
                       variant="outlined"
                       onClick={() => {
