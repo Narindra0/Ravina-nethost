@@ -18,9 +18,9 @@ import {
   useTheme,
   TextField,
   InputAdornment,
-  ToggleButtonGroup,
-  ToggleButton,
   Chip,
+  Stack,
+  Tooltip,
 } from '@mui/material'
 import {
   CalendarMonth,
@@ -29,6 +29,8 @@ import {
   Menu as MenuIcon,
   ArrowBack,
   Search as SearchIcon,
+  Shuffle,
+  RotateLeft,
 } from '@mui/icons-material'
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
@@ -65,10 +67,9 @@ export default function Dashboard() {
   const [selectedTemplateForDetails, setSelectedTemplateForDetails] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 8
-  const [suggestionSearch, setSuggestionSearch] = useState('')
-  const [suggestionTypeFilter, setSuggestionTypeFilter] = useState('ALL')
   const [inventorySearch, setInventorySearch] = useState('')
   const [catalogSearch, setCatalogSearch] = useState('')
+  const [showCatalogFromTrefle, setShowCatalogFromTrefle] = useState(false)
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -158,53 +159,78 @@ export default function Dashboard() {
 
   const suggestionList = useMemo(() => suggestions?.suggestions ?? [], [suggestions])
 
-  const suggestionTypeOptions = useMemo(() => {
-    const types = new Set()
+  const curatedSuggestions = useMemo(() => {
+    if (suggestionList.length === 0) {
+      return []
+    }
+
+    const categories = {
+      Herbe: [],
+      Fruit: [],
+      Légume: [],
+      Rosier: [],
+    }
+
     suggestionList.forEach((plant) => {
-      if (plant?.type) {
-        types.add(plant.type)
+      const type = (plant.type || '').toLowerCase()
+      if (type.includes('herbe') || type.includes('aromatique')) {
+        categories.Herbe.push(plant)
+      } else if (type.includes('fruit')) {
+        categories.Fruit.push(plant)
+      } else if (type.includes('rosier') || type.includes('rose')) {
+        categories.Rosier.push(plant)
+      } else if (type.includes('légume') || type.includes('legume')) {
+        categories.Légume.push(plant)
       }
     })
-    return ['ALL', ...Array.from(types)]
+
+    const pickFirst = (list, count) => list.slice(0, count)
+
+    const selection = [
+      ...pickFirst(categories.Herbe, 1),
+      ...pickFirst(categories.Fruit, 3),
+      ...pickFirst(categories.Légume, 3),
+      ...pickFirst(categories.Rosier, 2),
+    ]
+
+    const filled = selection.filter(Boolean)
+    if (filled.length < 8) {
+      const fallback = suggestionList.filter((plant) => !filled.includes(plant))
+      filled.push(...fallback.slice(0, 8 - filled.length))
+    }
+
+    return filled.slice(0, 8)
   }, [suggestionList])
 
-  const filteredSuggestions = useMemo(() => {
-    const query = suggestionSearch.trim().toLowerCase()
-    return suggestionList.filter((plant) => {
-      const matchesType =
-        suggestionTypeFilter === 'ALL' ||
-        (plant.type ?? '').toLowerCase() === suggestionTypeFilter.toLowerCase()
+  const madagascarPriorityList = ['vanille', 'litchi', 'riz', 'café', 'cacao', 'girofle', 'ylang', 'mangue', 'banane']
 
-      if (!matchesType) {
-        return false
-      }
+  const prioritizedPlants = useMemo(() => {
+    return [...plants].sort((a, b) => {
+      const aName = (a.name || '').toLowerCase()
+      const bName = (b.name || '').toLowerCase()
 
-      if (!query) {
-        return true
-      }
+      const aPriority = madagascarPriorityList.findIndex((keyword) => aName.includes(keyword))
+      const bPriority = madagascarPriorityList.findIndex((keyword) => bName.includes(keyword))
 
-      const haystack = [
-        plant.name,
-        plant.type,
-        plant.sunExposure,
-        plant.bestSeason,
-        plant.wateringFrequency,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return haystack.includes(query)
+      const normalize = (value) => (value === -1 ? Number.MAX_SAFE_INTEGER : value)
+      return normalize(aPriority) - normalize(bPriority)
     })
-  }, [suggestionList, suggestionSearch, suggestionTypeFilter])
+  }, [plants])
+
+  const inventoryDataset = useMemo(() => {
+    if (showCatalogFromTrefle && suggestions?.isPremium) {
+      return suggestionList
+    }
+    return prioritizedPlants
+  }, [prioritizedPlants, showCatalogFromTrefle, suggestionList, suggestions])
 
   const filteredPlants = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase()
     if (!query) {
-      return plants
+      return inventoryDataset
     }
 
-    return plants.filter((plant) => {
+    return inventoryDataset.filter((plant) => {
       const haystack = [
         plant.name,
         plant.type,
@@ -217,7 +243,7 @@ export default function Dashboard() {
         .toLowerCase()
       return haystack.includes(query)
     })
-  }, [plants, inventorySearch])
+  }, [inventoryDataset, inventorySearch])
 
   const paginatedPlants = useMemo(() => {
     if (showAllPlants) {
@@ -240,20 +266,13 @@ export default function Dashboard() {
     setCurrentPage(1)
   }, [inventorySearch])
 
-  const trefleCatalog = useMemo(() => {
-    if (!suggestions?.isPremium) {
-      return []
-    }
-    return suggestionList
-  }, [suggestionList, suggestions])
-
   const filteredCatalog = useMemo(() => {
     const query = catalogSearch.trim().toLowerCase()
     if (!query) {
-      return trefleCatalog
+      return suggestionList
     }
 
-    return trefleCatalog.filter((plant) => {
+    return suggestionList.filter((plant) => {
       const haystack = [
         plant.name,
         plant.type,
@@ -265,7 +284,7 @@ export default function Dashboard() {
         .toLowerCase()
       return haystack.includes(query)
     })
-  }, [trefleCatalog, catalogSearch])
+  }, [suggestionList, catalogSearch])
 
   if (!authStore.isAuthenticated()) {
     window.location.href = '/login'
@@ -340,58 +359,11 @@ export default function Dashboard() {
                     </Typography>
                   </Box>
                 </Box>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 1,
-                    width: '100%',
-                    mt: { xs: 2, md: 0 },
-                  }}
-                >
-                  <TextField
-                    value={suggestionSearch}
-                    onChange={(e) => setSuggestionSearch(e.target.value)}
-                    size="small"
-                    placeholder="Recherche assistée (nom, type, climat...)"
-                    sx={{ flex: { xs: '1 1 100%', md: '1 1 280px' } }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <ToggleButtonGroup
-                    value={suggestionTypeFilter}
-                    exclusive
-                    onChange={(_, newValue) => {
-                      if (newValue !== null) setSuggestionTypeFilter(newValue)
-                    }}
-                    size="small"
-                    sx={{
-                      flexWrap: 'wrap',
-                      gap: 1,
-                      '& .MuiToggleButton-root': {
-                        borderRadius: 999,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    {suggestionTypeOptions.map((type) => (
-                      <ToggleButton key={type} value={type}>
-                        {type === 'ALL' ? 'Tout' : type}
-                      </ToggleButton>
-                    ))}
-                  </ToggleButtonGroup>
-                </Box>
               </Box>
 
-              {filteredSuggestions.length > 0 ? (
+              {curatedSuggestions.length > 0 ? (
                 <Grid container spacing={1.5}>
-                  {filteredSuggestions.map((plant) => (
+                  {curatedSuggestions.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
                       <Card sx={dashboardStyles.plantCard}>
                         <Box sx={dashboardStyles.plantCardImage}>
@@ -478,6 +450,25 @@ export default function Dashboard() {
                     ),
                   }}
                 />
+                {suggestions?.isPremium && (
+                  <Tooltip
+                    title={
+                      showCatalogFromTrefle
+                        ? 'Afficher vos variétés enregistrées'
+                        : 'Explorer le catalogue Trefle.io'
+                    }
+                  >
+                    <Button
+                      variant={showCatalogFromTrefle ? 'contained' : 'outlined'}
+                      color="secondary"
+                      startIcon={showCatalogFromTrefle ? <RotateLeft /> : <Shuffle />}
+                      onClick={() => setShowCatalogFromTrefle((prev) => !prev)}
+                      sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                    >
+                      {showCatalogFromTrefle ? 'Voir mon inventaire' : 'Voir catalogue Trefle'}
+                    </Button>
+                  </Tooltip>
+                )}
               </Box>
 
               {filteredPlants.length === 0 ? (
@@ -492,36 +483,111 @@ export default function Dashboard() {
                 <Grid container spacing={1.5}>
                   {paginatedPlants.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                      <Card sx={dashboardStyles.plantCard}>
-                        <Box sx={dashboardStyles.plantCardImage}>
+                      <Card
+                        sx={{
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                          boxShadow: '0 20px 30px rgba(15,23,42,0.08)',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          height: '100%',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            position: 'relative',
+                            pt: '65%',
+                            backgroundColor: '#f3f4f6',
+                          }}
+                        >
                           <img
-                            src={getPlantImagePath(plant.imageSlug)}
+                            src={getPlantImagePath(plant.imageSlug || plant.image_url)}
                             alt={plant.name}
                             loading="lazy"
-                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_PLANT_IMAGE; }}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null
+                              e.currentTarget.src = DEFAULT_PLANT_IMAGE
+                            }}
                           />
+                          {madagascarPriorityList.some((keyword) =>
+                            (plant.name || '').toLowerCase().includes(keyword)
+                          ) && (
+                            <Chip
+                              label="Madagascar"
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 12,
+                                left: 12,
+                                backgroundColor: '#fef3c7',
+                                color: '#b45309',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                              }}
+                            />
+                          )}
                         </Box>
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                            <Button
-                              sx={dashboardStyles.plantNameLink}
-                              onClick={() => handleOpenTemplateDetails(plant)}
-                              aria-label={`Voir les détails de ${plant.name}`}
-                            >
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Stack spacing={1}>
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
                               {getDisplayName(plant.name)}
-                            </Button>
-                            <Box sx={dashboardStyles.plantCardBadge}>
-                              {plant.type}
-                            </Box>
-                          </Box>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {plant.type} • {plant.bestSeason || 'Toute saison'}
+                            </Typography>
+                            {plant.sunExposure && (
+                              <Typography variant="body2" color="text.secondary">
+                                ☀️ {plant.sunExposure}
+                              </Typography>
+                            )}
+                          </Stack>
                         </CardContent>
+                        <CardActions
+                          sx={{
+                            justifyContent: 'space-between',
+                            px: 2,
+                            pb: 2,
+                          }}
+                        >
+                          <Button
+                            sx={dashboardStyles.plantNameLink}
+                            onClick={() => handleOpenTemplateDetails(plant)}
+                            aria-label={`Voir les détails de ${plant.name}`}
+                          >
+                            Détails
+                          </Button>
+                          {!showCatalogFromTrefle && (
+                            <Chip
+                              label="Base Ravina"
+                              size="small"
+                              sx={{ backgroundColor: '#ecfccb', color: '#15803d', fontWeight: 700 }}
+                            />
+                          )}
+                          {showCatalogFromTrefle && (
+                            <Chip
+                              label="trefle.io"
+                              size="small"
+                              sx={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}
+                            />
+                          )}
+                        </CardActions>
                       </Card>
                     </Grid>
                   ))}
                 </Grid>
               )}
 
-              {suggestions?.isPremium && (
+              {suggestions?.isPremium && !showCatalogFromTrefle && (
                 <Box
                   sx={{
                     mt: 3,
