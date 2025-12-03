@@ -70,6 +70,8 @@ export default function Dashboard() {
   const [inventorySearch, setInventorySearch] = useState('')
   const [catalogSearch, setCatalogSearch] = useState('')
   const [showCatalogFromTrefle, setShowCatalogFromTrefle] = useState(false)
+  const [catalogPage, setCatalogPage] = useState(1)
+  const catalogItemsPerPage = 10
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -390,6 +392,17 @@ export default function Dashboard() {
     })
   }, [suggestionList, catalogSearch])
 
+  const paginatedCatalog = useMemo(() => {
+    return filteredCatalog.slice(
+      (catalogPage - 1) * catalogItemsPerPage,
+      catalogPage * catalogItemsPerPage
+    )
+  }, [filteredCatalog, catalogPage, catalogItemsPerPage])
+
+  useEffect(() => {
+    setCatalogPage(1)
+  }, [catalogSearch, showCatalogFromTrefle])
+
   if (!authStore.isAuthenticated()) {
     window.location.href = '/login'
     return null
@@ -523,10 +536,11 @@ export default function Dashboard() {
 
             {/* My Listings (Inventaire & Collection) */}
             <Box sx={dashboardStyles.sectionContainer}>
-              <Box sx={dashboardStyles.sectionHeader}>
-                <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
-                  Inventaire & Collection
-                </Typography>
+            <Box sx={dashboardStyles.sectionHeader}>
+              <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
+                Inventaire & Collection
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 {!showCatalogFromTrefle && filteredPlants.length >= 5 && (
                   !showAllPlants ? (
                     <Button
@@ -554,14 +568,11 @@ export default function Dashboard() {
                     />
                   )
                 )}
-              </Box>
-
-              {suggestions?.isPremium && (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                {suggestions?.isPremium && (
                   <Tooltip
                     title={
                       showCatalogFromTrefle
-                        ? 'Afficher uniquement votre inventaire'
+                        ? 'Afficher uniquement le catalogue de base'
                         : 'Basculer vers le catalogue RAVINA+'
                     }
                   >
@@ -575,13 +586,14 @@ export default function Dashboard() {
                           backgroundColor: '#eff6ff',
                         },
                       }}
-                      aria-label={showCatalogFromTrefle ? 'Voir inventaire' : 'Voir catalogue premium'}
+                      aria-label={showCatalogFromTrefle ? 'Voir catalogue de base' : 'Voir catalogue premium'}
                     >
                       {showCatalogFromTrefle ? <RotateLeft /> : <Shuffle />}
                     </IconButton>
                   </Tooltip>
-                </Box>
-              )}
+                )}
+              </Box>
+            </Box>
 
               {!showCatalogFromTrefle && (
                 filteredPlants.length === 0 ? (
@@ -735,7 +747,7 @@ export default function Dashboard() {
                         Aucune entrée Trefle.io ne correspond à votre filtre.
                       </Typography>
                     ) : (
-                      filteredCatalog.slice(0, 8).map((plant) => (
+                      paginatedCatalog.map((plant) => (
                         <Box
                           component="li"
                           key={`trefle-${plant.id}`}
@@ -858,6 +870,70 @@ export default function Dashboard() {
                       ))
                     )}
                   </Box>
+                  {filteredCatalog.length > catalogItemsPerPage && (
+                    <Box
+                      sx={{
+                        mt: 2,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 1.5,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<ArrowBack />}
+                          disabled={catalogPage === 1}
+                          onClick={() => setCatalogPage((prev) => Math.max(1, prev - 1))}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            borderColor: '#10b981',
+                            color: '#10b981',
+                            '&:hover': {
+                              borderColor: '#059669',
+                              backgroundColor: 'rgba(16, 185, 129, 0.04)',
+                            },
+                            '&.Mui-disabled': {
+                              borderColor: '#d1d5db',
+                              color: '#9ca3af',
+                            },
+                          }}
+                        >
+                          Précédent
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          endIcon={<ArrowForward />}
+                          disabled={catalogPage >= Math.ceil(filteredCatalog.length / catalogItemsPerPage)}
+                          onClick={() => setCatalogPage((prev) => prev + 1)}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            borderColor: '#10b981',
+                            color: '#10b981',
+                            '&:hover': {
+                              borderColor: '#059669',
+                              backgroundColor: 'rgba(16, 185, 129, 0.04)',
+                            },
+                            '&.Mui-disabled': {
+                              borderColor: '#d1d5db',
+                              color: '#9ca3af',
+                            },
+                          }}
+                        >
+                          Suivant
+                        </Button>
+                      </Box>
+                      <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                        Page {catalogPage} sur {Math.max(1, Math.ceil(filteredCatalog.length / catalogItemsPerPage))}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               )}
 
