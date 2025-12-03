@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Badge,
   Box,
   Button,
+  Chip,
   Divider,
   Drawer,
   List,
@@ -16,12 +17,14 @@ import {
   LocalFlorist,
   Logout,
   NotificationsNone,
+  Star,
 } from '@mui/icons-material'
 // 🚨 CORRECTION: Utilisation des hooks et composants de TanStack Router
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import { authStore } from '../store/auth'
 import { useNotifications } from '../context/NotificationsContext'
+import AccountModal from '../components/ui/AccountModal'
 
 // Import de votre logo
 import orientMadaLogo from '../assets/logo-texte.png'
@@ -135,6 +138,12 @@ const sidebarStyles = {
     mb: 1,
     backgroundColor: '#f9fafb',
     borderRadius: 2,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    '&:hover': {
+      backgroundColor: '#f3f4f6',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    },
   },
 
   userEmail: {
@@ -143,6 +152,13 @@ const sidebarStyles = {
     fontWeight: 500,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+  },
+
+  premiumBadge: {
+    ml: 1,
+    height: 20,
+    fontSize: '0.7rem',
+    fontWeight: 700,
   },
 }
 
@@ -173,6 +189,8 @@ export default function Sidebar({ user = null, isMobileOpen, onClose }) {
     isFetching: notificationsLoading,
   } = useNotifications()
 
+  const [accountModalOpen, setAccountModalOpen] = useState(false)
+
   const handleLogout = () => {
     authStore.clearToken()
     window.location.href = '/login'
@@ -195,12 +213,34 @@ export default function Sidebar({ user = null, isMobileOpen, onClose }) {
       {/* 2. Navigation Section */}
       <Box sx={sidebarStyles.nav}>
         {user && (
-          <Box sx={sidebarStyles.userInfo}>
-            <Typography variant="body2" sx={sidebarStyles.userEmail}>
-              {user.email}
-            </Typography>
+          <Box
+            sx={sidebarStyles.userInfo}
+            onClick={() => setAccountModalOpen(true)}
+            title="Cliquez pour gérer votre compte"
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="body2" sx={sidebarStyles.userEmail}>
+                {user.email}
+              </Typography>
+              {user.premiumExpiryDate && new Date(user.premiumExpiryDate) > new Date() && (
+                <Chip
+                  icon={<Star sx={{ fontSize: 14 }} />}
+                  label="Premium"
+                  color="secondary"
+                  size="small"
+                  sx={sidebarStyles.premiumBadge}
+                />
+              )}
+            </Box>
           </Box>
         )}
+
+        {/* Modal de gestion de compte */}
+        <AccountModal
+          open={accountModalOpen}
+          onClose={() => setAccountModalOpen(false)}
+          user={user}
+        />
 
         {/* Dashboard Button */}
         {/* 🚨 Utilisation du composant Link de TanStack */}

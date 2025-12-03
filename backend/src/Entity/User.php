@@ -38,6 +38,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private array $roles = [];
 
     // --------------------------
+    // 💎 Premium
+    // --------------------------
+    #[ORM\Column(nullable: true)]
+    #[Groups(['user:read'])]
+    private ?\DateTimeImmutable $premiumExpiryDate = null;
+
+    // --------------------------
     // 🔐 Mot de passe hashé
     // --------------------------
     #[ORM\Column]
@@ -131,6 +138,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $roles = $this->roles;
         $roles[] = 'ROLE_USER'; // tous les utilisateurs ont au moins ce rôle
+
+        // Détermination automatique du rôle selon le statut premium
+        if ($this->isPremium()) {
+            $roles[] = 'ROLE_PREMIUM';
+        } else {
+            $roles[] = 'ROLE_FREE';
+        }
+
         return array_unique($roles);
     }
 
@@ -215,6 +230,50 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             if ($userPlantation->getUser() === $this) {
                 $userPlantation->setUser(null);
             }
+        }
+
+        return $this;
+    }
+
+    // --------------------------
+    // 💎 Gestion Premium
+    // --------------------------
+    public function getPremiumExpiryDate(): ?\DateTimeImmutable
+    {
+        return $this->premiumExpiryDate;
+    }
+
+    public function setPremiumExpiryDate(?\DateTimeImmutable $date): static
+    {
+        $this->premiumExpiryDate = $date;
+        return $this;
+    }
+
+    /**
+     * Vérifie si l'utilisateur a un accès premium actif
+     */
+    public function isPremium(): bool
+    {
+        if ($this->premiumExpiryDate === null) {
+            return false;
+        }
+
+        return $this->premiumExpiryDate > new \DateTimeImmutable();
+    }
+
+    /**
+     * Étend la durée premium de l'utilisateur
+     */
+    public function extendPremium(int $days): static
+    {
+        $now = new \DateTimeImmutable();
+
+        // Si déjà premium, on étend depuis la date d'expiration actuelle
+        if ($this->isPremium() && $this->premiumExpiryDate > $now) {
+            $this->premiumExpiryDate = $this->premiumExpiryDate->modify("+{$days} days");
+        } else {
+            // Sinon, on part d'aujourd'hui
+            $this->premiumExpiryDate = $now->modify("+{$days} days");
         }
 
         return $this;
