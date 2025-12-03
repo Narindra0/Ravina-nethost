@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react'
+import React, { useEffect, useState, lazy, Suspense, useMemo } from 'react'
 import { authStore } from '../store/auth'
 import { api } from '../lib/axios'
 const AddPlantModal = lazy(() => import('./AddPlantModal'))
@@ -16,6 +16,11 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
+  TextField,
+  InputAdornment,
+  ToggleButtonGroup,
+  ToggleButton,
+  Chip,
 } from '@mui/material'
 import {
   CalendarMonth,
@@ -23,6 +28,7 @@ import {
   ArrowForward,
   Menu as MenuIcon,
   ArrowBack,
+  Search as SearchIcon,
 } from '@mui/icons-material'
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
@@ -59,6 +65,10 @@ export default function Dashboard() {
   const [selectedTemplateForDetails, setSelectedTemplateForDetails] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 8
+  const [suggestionSearch, setSuggestionSearch] = useState('')
+  const [suggestionTypeFilter, setSuggestionTypeFilter] = useState('ALL')
+  const [inventorySearch, setInventorySearch] = useState('')
+  const [catalogSearch, setCatalogSearch] = useState('')
 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -146,6 +156,117 @@ export default function Dashboard() {
     setSelectedTemplateForDetails(null)
   }
 
+  const suggestionList = useMemo(() => suggestions?.suggestions ?? [], [suggestions])
+
+  const suggestionTypeOptions = useMemo(() => {
+    const types = new Set()
+    suggestionList.forEach((plant) => {
+      if (plant?.type) {
+        types.add(plant.type)
+      }
+    })
+    return ['ALL', ...Array.from(types)]
+  }, [suggestionList])
+
+  const filteredSuggestions = useMemo(() => {
+    const query = suggestionSearch.trim().toLowerCase()
+    return suggestionList.filter((plant) => {
+      const matchesType =
+        suggestionTypeFilter === 'ALL' ||
+        (plant.type ?? '').toLowerCase() === suggestionTypeFilter.toLowerCase()
+
+      if (!matchesType) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
+      const haystack = [
+        plant.name,
+        plant.type,
+        plant.sunExposure,
+        plant.bestSeason,
+        plant.wateringFrequency,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(query)
+    })
+  }, [suggestionList, suggestionSearch, suggestionTypeFilter])
+
+  const filteredPlants = useMemo(() => {
+    const query = inventorySearch.trim().toLowerCase()
+    if (!query) {
+      return plants
+    }
+
+    return plants.filter((plant) => {
+      const haystack = [
+        plant.name,
+        plant.type,
+        plant.bestSeason,
+        plant.sunExposure,
+        plant.description,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [plants, inventorySearch])
+
+  const paginatedPlants = useMemo(() => {
+    if (showAllPlants) {
+      return filteredPlants.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    }
+    return filteredPlants.slice(0, 5)
+  }, [filteredPlants, showAllPlants, currentPage, itemsPerPage])
+
+  useEffect(() => {
+    if (!showAllPlants) {
+      return
+    }
+    const totalPages = Math.max(1, Math.ceil(filteredPlants.length / itemsPerPage))
+    if (currentPage > totalPages) {
+      setCurrentPage(1)
+    }
+  }, [filteredPlants, currentPage, showAllPlants, itemsPerPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [inventorySearch])
+
+  const trefleCatalog = useMemo(() => {
+    if (!suggestions?.isPremium) {
+      return []
+    }
+    return suggestionList
+  }, [suggestionList, suggestions])
+
+  const filteredCatalog = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase()
+    if (!query) {
+      return trefleCatalog
+    }
+
+    return trefleCatalog.filter((plant) => {
+      const haystack = [
+        plant.name,
+        plant.type,
+        plant.sunExposure,
+        plant.bestSeason,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [trefleCatalog, catalogSearch])
+
   if (!authStore.isAuthenticated()) {
     window.location.href = '/login'
     return null
@@ -219,11 +340,58 @@ export default function Dashboard() {
                     </Typography>
                   </Box>
                 </Box>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    width: '100%',
+                    mt: { xs: 2, md: 0 },
+                  }}
+                >
+                  <TextField
+                    value={suggestionSearch}
+                    onChange={(e) => setSuggestionSearch(e.target.value)}
+                    size="small"
+                    placeholder="Recherche assistée (nom, type, climat...)"
+                    sx={{ flex: { xs: '1 1 100%', md: '1 1 280px' } }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <ToggleButtonGroup
+                    value={suggestionTypeFilter}
+                    exclusive
+                    onChange={(_, newValue) => {
+                      if (newValue !== null) setSuggestionTypeFilter(newValue)
+                    }}
+                    size="small"
+                    sx={{
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      '& .MuiToggleButton-root': {
+                        borderRadius: 999,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    {suggestionTypeOptions.map((type) => (
+                      <ToggleButton key={type} value={type}>
+                        {type === 'ALL' ? 'Tout' : type}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </Box>
               </Box>
 
-              {suggestions && suggestions.suggestions && suggestions.suggestions.length > 0 ? (
+              {filteredSuggestions.length > 0 ? (
                 <Grid container spacing={1.5}>
-                  {suggestions.suggestions.map((plant) => (
+                  {filteredSuggestions.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
                       <Card sx={dashboardStyles.plantCard}>
                         <Box sx={dashboardStyles.plantCardImage}>
@@ -283,7 +451,7 @@ export default function Dashboard() {
                 <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
                   Inventaire & Collection
                 </Typography>
-                {!showAllPlants && plants.length >= 5 && (
+                {!showAllPlants && filteredPlants.length >= 5 && (
                   <Button
                     endIcon={<ArrowForward />}
                     sx={dashboardStyles.viewAllButton}
@@ -295,16 +463,34 @@ export default function Dashboard() {
                 )}
               </Box>
 
-              {plants.length === 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 2 }}>
+                <TextField
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                  size="small"
+                  placeholder="Rechercher dans votre inventaire"
+                  sx={{ flex: { xs: '1 1 100%', md: '1 1 320px' } }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              {filteredPlants.length === 0 ? (
                 <Box sx={dashboardStyles.emptyState}>
-                  <Typography>Vous n'avez encore enregistré aucune plante.</Typography>
+                  <Typography>
+                    {inventorySearch
+                      ? 'Aucune plante ne correspond à votre recherche.'
+                      : "Vous n'avez encore enregistré aucune plante."}
+                  </Typography>
                 </Box>
               ) : (
                 <Grid container spacing={1.5}>
-                  {(showAllPlants
-                    ? plants.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                    : plants.slice(0, 5)
-                  ).map((plant) => (
+                  {paginatedPlants.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
                       <Card sx={dashboardStyles.plantCard}>
                         <Box sx={dashboardStyles.plantCardImage}>
@@ -335,8 +521,109 @@ export default function Dashboard() {
                 </Grid>
               )}
 
+              {suggestions?.isPremium && (
+                <Box
+                  sx={{
+                    mt: 3,
+                    borderRadius: 3,
+                    border: '1px solid #e5e7eb',
+                    p: { xs: 2, sm: 3 },
+                    backgroundColor: '#f8fafc',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', md: 'row' },
+                      alignItems: { xs: 'flex-start', md: 'center' },
+                      justifyContent: 'space-between',
+                      gap: 2,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        Catalogue premium Trefle.io
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Un aperçu rapide des variétés botaniques disponibles pour vos futures collections.
+                      </Typography>
+                    </Box>
+                    <TextField
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      size="small"
+                      placeholder="Filtrer le catalogue premium"
+                      sx={{ width: { xs: '100%', sm: 280 } }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Box>
+
+                  <Box
+                    component="ul"
+                    sx={{
+                      listStyle: 'none',
+                      m: 0,
+                      mt: 2,
+                      p: 0,
+                      display: 'grid',
+                      gap: 1,
+                    }}
+                  >
+                    {filteredCatalog.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Aucune entrée Trefle.io ne correspond à votre filtre.
+                      </Typography>
+                    ) : (
+                      filteredCatalog.slice(0, 8).map((plant) => (
+                        <Box
+                          component="li"
+                          key={`trefle-${plant.id}`}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderRadius: 2,
+                            border: '1px solid #e2e8f0',
+                            px: 2,
+                            py: 1.25,
+                            backgroundColor: '#fff',
+                            boxShadow: '0 1px 2px rgba(15,23,42,0.08)',
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                              {getDisplayName(plant.name)}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {plant.type} • {plant.sunExposure}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label="trefle.io"
+                            size="small"
+                            sx={{
+                              textTransform: 'uppercase',
+                              fontWeight: 700,
+                              letterSpacing: '0.08em',
+                              backgroundColor: '#dbeafe',
+                              color: '#1d4ed8',
+                            }}
+                          />
+                        </Box>
+                      ))
+                    )}
+                  </Box>
+                </Box>
+              )}
+
               <Box sx={dashboardStyles.addButtonContainer}>
-                {showAllPlants && plants.length > itemsPerPage && (
+                {showAllPlants && filteredPlants.length > itemsPerPage && (
                   <Button
                     variant="outlined"
                     startIcon={<ArrowBack />}
@@ -370,12 +657,12 @@ export default function Dashboard() {
                 >
                   {!isMobile && 'Ajouter une nouvelle plante'}
                 </Button>
-                {showAllPlants && plants.length > itemsPerPage && (
+                {showAllPlants && filteredPlants.length > itemsPerPage && (
                   <Button
                     variant="outlined"
                     endIcon={<ArrowForward />}
                     onClick={handleNextPage}
-                    disabled={currentPage >= Math.ceil(plants.length / itemsPerPage)}
+                    disabled={currentPage >= Math.ceil(filteredPlants.length / itemsPerPage)}
                     sx={{
                       textTransform: 'none',
                       fontWeight: 600,
@@ -399,7 +686,7 @@ export default function Dashboard() {
               {showAllPlants && plants.length > itemsPerPage && (
                 <Box sx={{ textAlign: 'center', mt: 2 }}>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                    Page {currentPage} sur {Math.ceil(plants.length / itemsPerPage)}
+                    Page {currentPage} sur {Math.max(1, Math.ceil(filteredPlants.length / itemsPerPage))}
                   </Typography>
                 </Box>
               )}
