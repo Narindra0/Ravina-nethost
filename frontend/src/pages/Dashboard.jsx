@@ -268,11 +268,20 @@ export default function Dashboard() {
 
   const filteredCatalog = useMemo(() => {
     const query = catalogSearch.trim().toLowerCase()
+    // Ne garder que les plantes facilement trouvables à Madagascar
+    const madagascarPlants = suggestionList.filter((plant) =>
+      madagascarPriorityList.some((keyword) =>
+        (plant.name || '').toLowerCase().includes(keyword)
+      )
+    )
+
+    const baseList = madagascarPlants.length > 0 ? madagascarPlants : suggestionList
+
     if (!query) {
-      return suggestionList
+      return baseList
     }
 
-    return suggestionList.filter((plant) => {
+    return baseList.filter((plant) => {
       const haystack = [
         plant.name,
         plant.type,
@@ -704,18 +713,35 @@ export default function Dashboard() {
                               {plant.type} • {plant.sunExposure}
                             </Typography>
                           </Box>
-                          <Chip
-                            label="trefle.io"
-                            size="small"
+                          <Box
                             sx={{
-                              textTransform: 'uppercase',
-                              fontWeight: 700,
-                              letterSpacing: '0.08em',
-                              backgroundColor: '#dbeafe',
-                              color: '#1d4ed8',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 0.5,
                               flexShrink: 0,
                             }}
-                          />
+                          >
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() => handleOpenTemplateDetails(plant)}
+                              sx={{ textTransform: 'none', padding: 0, minWidth: 'auto' }}
+                            >
+                              Voir
+                            </Button>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => handleOpenCreatePlantation(plant.id)}
+                              sx={{
+                                textTransform: 'none',
+                                backgroundColor: '#10b981',
+                                '&:hover': { backgroundColor: '#059669' },
+                              }}
+                            >
+                              Planter
+                            </Button>
+                          </Box>
                         </Box>
                       ))
                     )}
